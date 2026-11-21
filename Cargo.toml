@@ -1,0 +1,51 @@
+[package]
+name = "rustpiz"
+version = "0.4.7"
+edition = "2021"
+description = "RustPiz — effets de fenêtres pour Windows 11 : transparence, effets DWM, animations et Jelly (Win32 natif)"
+license = "MIT"
+
+[dependencies]
+windows = { version = "0.62", features = [
+    "Win32_Foundation",
+    "Win32_System_LibraryLoader",
+    "Win32_System_Threading",
+    "Win32_Security",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_UI_Shell",
+    "Win32_UI_Input_KeyboardAndMouse",
+    "Win32_UI_Controls",
+    "Win32_System_Registry",
+    "Win32_Graphics_Gdi",
+    "Win32_Graphics_Dwm",
+    # Animations GPU d'ouverture / fermeture (v0.3) : crochets d'événements,
+    # DPI par fil, Direct3D 11, DXGI, DirectComposition et capture WGC.
+    "Win32_UI_Accessibility",
+    "Win32_UI_HiDpi",
+    "Win32_Graphics_Direct3D",
+    "Win32_Graphics_Direct3D11",
+    "Win32_Graphics_Dxgi",
+    "Win32_Graphics_Dxgi_Common",
+    "Win32_Graphics_DirectComposition",
+    "Win32_Graphics_Direct2D_Common",
+    "Win32_System_WinRT",
+    "Win32_System_WinRT_Direct3D11",
+    "Win32_System_WinRT_Graphics_Capture",
+    "Foundation",
+    "Graphics",
+    "Graphics_Capture",
+    "Graphics_DirectX",
+    "Graphics_DirectX_Direct3D11",
+    # v0.4.2 : GetTickCount (délai depuis EVENT_OBJECT_SHOW, journal de
+    # l'ouverture à masquage précoce).
+    "Win32_System_SystemInformation",
+] }
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"
+time = { version = "0.3", features = ["formatting", "local-offset", "macros"] }
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = "symbols"

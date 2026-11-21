@@ -1,0 +1,6 @@
+// Ressources Windows embarquées dans l'exécutable (compilées par windres).
+// 1 : icône de l'application (systray + icône du fichier .exe).
+// RT_MANIFEST (24) : manifeste de compatibilité et de styles visuels.
+
+1 ICON "assets/icon.ico"
+1 24  "assets/app.manifest"

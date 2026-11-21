@@ -1,0 +1,5 @@
+# Cible par défaut : Windows 64 bits (GNU/MinGW).
+# Ainsi, `cargo check` et `cargo build --release` produisent directement
+# un exécutable Windows sans avoir à préciser --target.
+[build]
+target = "x86_64-pc-windows-gnu"
