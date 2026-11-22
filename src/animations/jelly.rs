@@ -269,13 +269,10 @@ pub fn taille_max_texture(niveau: i32) -> u32 {
 }
 
 #[cfg(windows)]
-pub use win32::{
-    basculer_jelly, definir_puissance_jelly, jelly_actif, jelly_desactive, jelly_palier,
-    jelly_puissance,
-};
+pub use win32::{jelly_actif, jelly_desactive};
 
 #[cfg(windows)]
-pub(super) use win32::{appliquer_config, arreter, reprendre};
+pub(super) use win32::{appliquer_config, arreter, rearmer, reprendre};
 
 #[cfg(windows)]
 mod win32 {
@@ -315,7 +312,7 @@ mod win32 {
     use super::super::politique::MemoireBornee;
     use super::super::ressort::{self, Grille, Puissance, Simulation, Vec2};
     use super::super::{contexte_gpu_partage, decrire, oui_non, signaler_erreur, WM_TRAME_PRETE};
-    use crate::config::{self, Config};
+    use crate::config::Config;
     use crate::logging;
     use crate::tray;
 
@@ -636,42 +633,18 @@ mod win32 {
         })
     }
 
-    /// Puissance du Jelly (%).
-    pub fn jelly_puissance() -> u8 {
-        lire().puissance.valeur()
-    }
-
-    /// Palier du menu le plus proche de la puissance (coche du sous-menu).
-    pub fn jelly_palier() -> u8 {
-        lire().puissance.palier_proche()
-    }
-
-    /// Bascule l'effet Jelly et l'enregistre ; la réactivation le réarme
-    /// s'il avait été désactivé après des échecs de masquage.
-    pub fn basculer_jelly() {
-        let mut r = lire();
-        r.actif = !r.actif;
-        ecrire(r);
-        if r.actif {
-            avec(|s| {
-                s.desactive = false;
-                s.motif_desactivation = None;
-                s.echecs_masquage = 0;
-            });
-            // Le pipeline Direct3D sera retenté au prochain glisser.
-            maillage_gpu::oublier_echec_pipeline();
-        }
-        persister(r);
-        reevaluer("case « Effet Jelly »");
-    }
-
-    /// Choisit la puissance du Jelly (bornée à 100 %) et l'enregistre.
-    pub fn definir_puissance_jelly(puissance: u8) {
-        let mut r = lire();
-        r.puissance = Puissance::new(puissance);
-        ecrire(r);
-        persister(r);
-        reevaluer("puissance du Jelly choisie dans le menu");
+    /// Réarme le Jelly s'il avait été désactivé pour la session (échecs de
+    /// masquage ou pipeline Direct3D en échec) : équivalent de l'ancien
+    /// « décocher puis recocher » du menu. Appelé par la fenêtre de
+    /// paramètres AVANT [`appliquer_config`] (qui réévalue ensuite).
+    pub fn rearmer() {
+        avec(|s| {
+            s.desactive = false;
+            s.motif_desactivation = None;
+            s.echecs_masquage = 0;
+        });
+        // Le pipeline Direct3D sera retenté au prochain glisser.
+        maillage_gpu::oublier_echec_pipeline();
     }
 
     /// Applique une configuration (démarrage, rechargement).
@@ -715,16 +688,6 @@ mod win32 {
     pub fn reprendre() {
         avec(|s| s.arrete = false);
         reevaluer("fermeture de session annulée");
-    }
-
-    fn persister(r: Reglages) {
-        let cles = [
-            ("jelly_actif", r.actif.to_string()),
-            ("jelly_puissance", r.puissance.valeur().to_string()),
-        ];
-        if let Err(e) = config::enregistrer_cles_racine(&cles) {
-            logging::erreur(&format!("Enregistrement des réglages du Jelly : {e}"));
-        }
     }
 
     /// Installe / retire le crochet selon les réglages. Désactivé ou

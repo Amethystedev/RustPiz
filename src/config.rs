@@ -192,7 +192,7 @@ effet_fermeture = false
 
 # Effet « Jelly » : la fenêtre se déforme comme une gelée pendant son
 # déplacement (glisser de la barre de titre), puis rebondit en s'amortissant.
-# Puissance en % : 0 (aucun mouvement), 25, 50, 75 ou 100 (très forte déformation).
+# Puissance en % : de 0 (aucun mouvement) à 100 (très forte déformation).
 jelly_actif = false
 jelly_puissance = 50
 
@@ -242,8 +242,8 @@ exclusions_processus = [
 # Profils automatiques (appliqués aux nouvelles fenêtres, toutes les 2 s).
 # Critères (ET logique) : processus, classe, titre_contient.
 # Effets DWM : "aucun", "mica", "micaalt", "acrylique", "verre".
-# Utilisez le menu « Identifier la fenêtre sous le curseur » pour connaître
-# le processus, la classe et le titre d'une fenêtre.
+# Le nom du processus d'une fenêtre est visible dans le Gestionnaire des
+# tâches (onglet Détails) ; sa classe, avec un outil comme Spy++.
 #
 # Exemple : Explorateur Windows 11 avec matière Mica (opacité intacte) :
 #
@@ -367,64 +367,6 @@ pub fn charger() -> Config {
 
     config.valider();
     config
-}
-
-/// Met à jour les valeurs modifiables depuis la fenêtre de paramètres,
-/// en préservant le reste du fichier (commentaires, listes, profils).
-///
-/// La stratégie est volontairement simple : on réécrit uniquement les
-/// lignes des cinq clés concernées, toutes les autres sont inchangées.
-pub fn mettre_a_jour_valeurs(
-    opacite: u8,
-    activer_au_demarrage: bool,
-    transparence_explorateur: bool,
-    bascule: &str,
-    augmenter: &str,
-    diminuer: &str,
-) -> Result<(), String> {
-    let chemin = chemin_config();
-    let contenu = fs::read_to_string(&chemin)
-        .map_err(|e| format!("Impossible de lire {} : {e}", chemin.display()))?;
-
-    let remplacements = [
-        ("opacite_defaut", format!("opacite_defaut = {opacite}")),
-        (
-            "activer_au_demarrage",
-            format!("activer_au_demarrage = {activer_au_demarrage}"),
-        ),
-        (
-            "transparence_explorateur",
-            format!("transparence_explorateur = {transparence_explorateur}"),
-        ),
-        ("bascule", format!("bascule = \"{bascule}\"")),
-        ("augmenter", format!("augmenter = \"{augmenter}\"")),
-        ("diminuer", format!("diminuer = \"{diminuer}\"")),
-    ];
-
-    let mut lignes: Vec<String> = contenu.lines().map(String::from).collect();
-    for (cle, nouvelle) in &remplacements {
-        let mut remplace = false;
-        for ligne in lignes.iter_mut() {
-            let sans_espaces = ligne.trim_start();
-            // Correspondance exacte de la clé suivie de « = ».
-            if let Some(reste) = sans_espaces.strip_prefix(cle) {
-                if reste.trim_start().starts_with('=') {
-                    let indentation = &ligne[..ligne.len() - sans_espaces.len()];
-                    *ligne = format!("{indentation}{nouvelle}");
-                    remplace = true;
-                    break;
-                }
-            }
-        }
-        if !remplace {
-            lignes.push(nouvelle.clone());
-        }
-    }
-
-    fs::write(&chemin, lignes.join("\r\n") + "\r\n")
-        .map_err(|e| format!("Impossible d'écrire {} : {e}", chemin.display()))?;
-    logging::info("Paramètres enregistrés dans config.toml.");
-    Ok(())
 }
 
 /// Met à jour (ou insère) des clés situées à la racine du TOML (avant le
@@ -565,29 +507,194 @@ fn est_cle(ligne: &str, cle: &str) -> bool {
     reste.trim_start().starts_with('=')
 }
 
-/// Enregistre des clés racine dans `config.toml` (voir [`maj_cles_racine`]),
-/// avec une écriture atomique (fichier temporaire puis renommage).
-pub fn enregistrer_cles_racine(cles: &[(&str, String)]) -> Result<(), String> {
-    let chemin = chemin_config();
-    let contenu = fs::read_to_string(&chemin)
-        .map_err(|e| format!("Impossible de lire {} : {e}", chemin.display()))?;
-    let nouveau = maj_cles_racine(&contenu, cles);
+/// Vrai si la ligne est l'en-tête de la table simple `[table]` (pas un
+/// tableau de tables `[[...]]`), commentaire de fin de ligne toléré.
+fn est_entete(ligne: &str, table: &str) -> bool {
+    let t = ligne.trim_start();
+    if t.starts_with("[[") {
+        return false;
+    }
+    let Some(reste) = t.strip_prefix('[') else {
+        return false;
+    };
+    let Some(fin) = reste.find(']') else {
+        return false;
+    };
+    let apres = reste[fin + 1..].trim_start();
+    reste[..fin].trim() == table && (apres.is_empty() || apres.starts_with('#'))
+}
 
+/// Met à jour (ou insère) des clés de la table `[table]`. Fonction pure.
+///
+/// Une clé présente dans la table est remplacée sur place (indentation
+/// conservée, valeur multi-lignes remplacée en entier) ; une clé absente est
+/// insérée après la dernière ligne clé/valeur de la table (sinon juste après
+/// l'en-tête). Table absente : créée en fin de fichier. Cas particulier : si
+/// la table est écrite EN LIGNE à la racine (`table = { ... }`), elle est
+/// remplacée en entier par une table en ligne contenant `cles` (toutes les
+/// clés de la table doivent alors être fournies, ce qui est le cas des
+/// raccourcis). Le style de fin de ligne est conservé, un BOM est retiré.
+fn maj_cles_table(contenu: &str, table: &str, cles: &[(&str, String)]) -> String {
+    let contenu = contenu.strip_prefix('\u{feff}').unwrap_or(contenu);
+    let fin = if contenu.contains("\r\n") { "\r\n" } else { "\n" };
+    let mut lignes: Vec<String> = contenu.lines().map(String::from).collect();
+
+    // Table en ligne à la racine.
+    {
+        let structure = analyser(&lignes);
+        let limite = (0..lignes.len())
+            .find(|&i| structure[i].is_some() && lignes[i].trim_start().starts_with('['))
+            .unwrap_or(lignes.len());
+        if (0..limite).any(|i| structure[i].is_some() && est_cle(&lignes[i], table)) {
+            let interieur: Vec<String> = cles.iter().map(|(c, v)| format!("{c} = {v}")).collect();
+            return maj_cles_racine(contenu, &[(table, format!("{{ {} }}", interieur.join(", ")))]);
+        }
+    }
+
+    for (cle, valeur) in cles {
+        let nouvelle = format!("{cle} = {valeur}");
+        let structure = analyser(&lignes);
+        let debut_instruction = |i: usize| structure[i].is_some();
+        let entete = (0..lignes.len()).find(|&i| debut_instruction(i) && est_entete(&lignes[i], table));
+        let Some(h) = entete else {
+            // Table absente : créée en fin de fichier (séparée par une ligne vide).
+            if lignes.last().is_some_and(|l| !l.trim().is_empty()) {
+                lignes.push(String::new());
+            }
+            lignes.push(format!("[{table}]"));
+            lignes.push(nouvelle);
+            continue;
+        };
+        let limite = (h + 1..lignes.len())
+            .find(|&i| debut_instruction(i) && lignes[i].trim_start().starts_with('['))
+            .unwrap_or(lignes.len());
+        let existante = (h + 1..limite).find(|&i| debut_instruction(i) && est_cle(&lignes[i], cle));
+        if let Some(i) = existante {
+            let indentation_len = lignes[i].len() - lignes[i].trim_start().len();
+            let indentation = lignes[i][..indentation_len].to_string();
+            let derniere_ligne = structure[i].unwrap_or(i);
+            lignes.splice(i..=derniere_ligne, [format!("{indentation}{nouvelle}")]);
+        } else {
+            let derniere = (h + 1..limite).rev().find(|&i| {
+                let t = lignes[i].trim_start();
+                debut_instruction(i) && !t.is_empty() && !t.starts_with('#') && t.contains('=')
+            });
+            let position = match derniere {
+                Some(i) => structure[i].unwrap_or(i) + 1,
+                None => h + 1,
+            };
+            lignes.insert(position, nouvelle);
+        }
+    }
+
+    let mut resultat = lignes.join(fin);
+    resultat.push_str(fin);
+    resultat
+}
+
+/// Chaîne TOML de base (entre guillemets, `\` et `"` échappés, caractères
+/// de contrôle en `\uXXXX`).
+fn chaine_toml(texte: &str) -> String {
+    let mut resultat = String::with_capacity(texte.len() + 2);
+    resultat.push('"');
+    for c in texte.chars() {
+        match c {
+            '\\' => resultat.push_str("\\\\"),
+            '"' => resultat.push_str("\\\""),
+            c if c.is_control() => resultat.push_str(&format!("\\u{:04X}", c as u32)),
+            c => resultat.push(c),
+        }
+    }
+    resultat.push('"');
+    resultat
+}
+
+/// Valeurs modifiables depuis la fenêtre de paramètres (v0.5.0).
+#[derive(Debug, Clone)]
+pub struct Parametres {
+    pub opacite_defaut: u8,
+    pub activer_au_demarrage: bool,
+    pub transparence_explorateur: bool,
+    /// Nom de configuration de l'effet (`EffetAnimation::nom_config`).
+    pub effet_fenetre: String,
+    pub effet_ouverture: bool,
+    pub effet_fermeture: bool,
+    pub jelly_actif: bool,
+    pub jelly_puissance: u8,
+    pub raccourcis: Raccourcis,
+}
+
+/// Applique les paramètres au contenu du fichier (fonction pure) : clés
+/// racine via [`maj_cles_racine`], raccourcis dans la table `[raccourcis]`
+/// via [`maj_cles_table`] ; le reste du fichier (commentaires, listes,
+/// profils) est préservé.
+fn maj_parametres(contenu: &str, p: &Parametres) -> String {
+    let racine = [
+        ("opacite_defaut", p.opacite_defaut.clamp(10, 100).to_string()),
+        ("activer_au_demarrage", p.activer_au_demarrage.to_string()),
+        ("transparence_explorateur", p.transparence_explorateur.to_string()),
+        ("effet_fenetre", chaine_toml(&p.effet_fenetre)),
+        ("effet_ouverture", p.effet_ouverture.to_string()),
+        ("effet_fermeture", p.effet_fermeture.to_string()),
+        ("jelly_actif", p.jelly_actif.to_string()),
+        ("jelly_puissance", p.jelly_puissance.min(100).to_string()),
+    ];
+    let contenu = maj_cles_racine(contenu, &racine);
+    let raccourcis = [
+        ("bascule", chaine_toml(&p.raccourcis.bascule)),
+        ("augmenter", chaine_toml(&p.raccourcis.augmenter)),
+        ("diminuer", chaine_toml(&p.raccourcis.diminuer)),
+    ];
+    maj_cles_table(&contenu, "raccourcis", &raccourcis)
+}
+
+/// Écrit `contenu` dans `chemin` de façon atomique (fichier temporaire
+/// synchronisé sur disque, puis renommage).
+fn ecrire_atomique(chemin: &std::path::Path, contenu: &str) -> Result<(), String> {
     let temporaire = chemin.with_file_name("config.toml.tmp");
     let ecrire = || -> std::io::Result<()> {
         let mut f = fs::File::create(&temporaire)?;
-        f.write_all(nouveau.as_bytes())?;
+        f.write_all(contenu.as_bytes())?;
         f.sync_all()
     };
     if let Err(e) = ecrire() {
         let _ = fs::remove_file(&temporaire);
         return Err(format!("Impossible d'écrire {} : {e}", temporaire.display()));
     }
-    fs::rename(&temporaire, &chemin).map_err(|e| {
+    fs::rename(&temporaire, chemin).map_err(|e| {
         let _ = fs::remove_file(&temporaire);
         format!("Impossible de remplacer {} : {e}", chemin.display())
-    })?;
-    logging::info("Réglages d'animation enregistrés dans config.toml.");
+    })
+}
+
+/// Enregistre les paramètres de la fenêtre de paramètres dans
+/// `config.toml` en UNE lecture et UNE écriture atomique. Le résultat est
+/// relu (`toml`) avant écriture : un fichier qui deviendrait invalide n'est
+/// jamais écrit (erreur renvoyée). Fichier absent : modèle par défaut.
+pub fn enregistrer_parametres(p: &Parametres) -> Result<(), String> {
+    let chemin = chemin_config();
+    let contenu = if chemin.exists() {
+        fs::read_to_string(&chemin)
+            .map_err(|e| format!("Impossible de lire {} : {e}", chemin.display()))?
+    } else {
+        TOML_DEFAUT.to_string()
+    };
+    let nouveau = maj_parametres(&contenu, p);
+    if let Err(e) = toml::from_str::<Config>(&nouveau) {
+        return Err(if toml::from_str::<Config>(&contenu).is_err() {
+            format!(
+                "{} est invalide : corrigez-le à la main avant d'enregistrer ({e})",
+                chemin.display()
+            )
+        } else {
+            format!("Enregistrement refusé : le fichier modifié serait invalide ({e})")
+        });
+    }
+    if let Some(dossier) = chemin.parent() {
+        let _ = fs::create_dir_all(dossier);
+    }
+    ecrire_atomique(&chemin, &nouveau)?;
+    logging::info("Paramètres enregistrés dans config.toml (fenêtre de paramètres).");
     Ok(())
 }
 
@@ -782,6 +889,109 @@ mod tests {
         let r2 = maj_cles_racine(&r, &[("jelly_puissance", "25".to_string())]);
         assert!(r2.contains("jelly_puissance = 25\n\n[raccourcis]"));
         assert!(!r2.contains("jelly_puissance = 75"));
+    }
+
+    fn parametres_exemple() -> Parametres {
+        Parametres {
+            opacite_defaut: 65,
+            activer_au_demarrage: false,
+            transparence_explorateur: false,
+            effet_fenetre: "balayage_pixels".to_string(),
+            effet_ouverture: true,
+            effet_fermeture: true,
+            jelly_actif: true,
+            jelly_puissance: 37,
+            raccourcis: Raccourcis {
+                bascule: "Ctrl+Shift+F9".to_string(),
+                augmenter: "Alt+PageHaut".to_string(),
+                diminuer: "Win+Alt+Bas".to_string(),
+            },
+        }
+    }
+
+    fn verifier_exemple(c: &Config) {
+        assert_eq!(c.opacite_defaut, 65);
+        assert!(!c.activer_au_demarrage && !c.transparence_explorateur);
+        assert_eq!(c.effet_fenetre, "balayage_pixels");
+        assert!(c.effet_ouverture && c.effet_fermeture && c.jelly_actif);
+        assert_eq!(c.jelly_puissance, 37);
+        assert_eq!(c.raccourcis.bascule, "Ctrl+Shift+F9");
+        assert_eq!(c.raccourcis.augmenter, "Alt+PageHaut");
+        assert_eq!(c.raccourcis.diminuer, "Win+Alt+Bas");
+    }
+
+    #[test]
+    fn parametres_sur_modele_par_defaut() {
+        let r = maj_parametres(TOML_DEFAUT, &parametres_exemple());
+        let c: Config = toml::from_str(&r).expect("parse");
+        verifier_exemple(&c);
+        // Remplacements sur place : aucune clé dupliquée, commentaires gardés.
+        assert_eq!(r.matches("opacite_defaut = ").count(), 1);
+        assert_eq!(r.matches("bascule = ").count(), 1);
+        assert_eq!(r.matches("jelly_puissance = ").count(), 1);
+        assert!(r.contains("# Active / désactive la transparence de la fenêtre sous le curseur."));
+        assert!(r.contains("exclusions_processus = ["));
+        // Idempotent.
+        assert_eq!(maj_parametres(&r, &parametres_exemple()), r);
+    }
+
+    #[test]
+    fn parametres_crlf_et_ancienne_config() {
+        let src = "opacite_defaut = 80\r\n\r\n[raccourcis]\r\nbascule = \"Ctrl+Alt+T\"\r\n\r\n[[profils]]\r\nnom = \"p\"\r\nopacite = 50\r\n";
+        let r = maj_parametres(src, &parametres_exemple());
+        assert!(!r.replace("\r\n", "").contains('\n'));
+        let c: Config = toml::from_str(&r).expect("parse");
+        verifier_exemple(&c);
+        assert_eq!(c.profils.len(), 1);
+        assert_eq!(c.profils[0].opacite, Some(50));
+        // Les raccourcis absents sont insérés DANS la table, avant [[profils]].
+        let table = r.find("[raccourcis]").expect("table");
+        let profils = r.find("[[profils]]").expect("profils");
+        let diminuer = r.find("diminuer = ").expect("clé");
+        assert!(table < diminuer && diminuer < profils);
+    }
+
+    #[test]
+    fn parametres_sans_table_raccourcis() {
+        let src = "opacite_defaut = 80\n";
+        let r = maj_parametres(src, &parametres_exemple());
+        let c: Config = toml::from_str(&r).expect("parse");
+        verifier_exemple(&c);
+        assert!(r.contains("\n\n[raccourcis]\nbascule = \"Ctrl+Shift+F9\"\naugmenter"));
+    }
+
+    #[test]
+    fn parametres_table_raccourcis_en_ligne() {
+        let src = "opacite_defaut = 80\nraccourcis = { bascule = \"Ctrl+Alt+T\" }\n[[profils]]\nnom = \"p\"\n";
+        let r = maj_parametres(src, &parametres_exemple());
+        let c: Config = toml::from_str(&r).expect("parse");
+        verifier_exemple(&c);
+        assert!(!r.contains("[raccourcis]"));
+    }
+
+    #[test]
+    fn cle_raccourci_hors_table_ignoree() {
+        // Une clé `bascule` dans une autre table n'est pas touchée.
+        let src = "[[profils]]\nbascule = \"x\"\n[raccourcis]\nbascule = \"Ctrl+Alt+T\"\n";
+        let r = maj_cles_table(src, "raccourcis", &[("bascule", "\"F5\"".to_string())]);
+        assert_eq!(r, "[[profils]]\nbascule = \"x\"\n[raccourcis]\nbascule = \"F5\"\n");
+    }
+
+    #[test]
+    fn entete_de_table() {
+        assert!(est_entete("[raccourcis]", "raccourcis"));
+        assert!(est_entete("  [ raccourcis ]  # commentaire", "raccourcis"));
+        assert!(!est_entete("[[raccourcis]]", "raccourcis"));
+        assert!(!est_entete("[raccourcis2]", "raccourcis"));
+        assert!(!est_entete("# [raccourcis]", "raccourcis"));
+    }
+
+    #[test]
+    fn chaine_toml_echappee() {
+        assert_eq!(chaine_toml("Ctrl+Alt+T"), "\"Ctrl+Alt+T\"");
+        assert_eq!(chaine_toml("a\"b\\c\n"), "\"a\\\"b\\\\c\\u000A\"");
+        let c: Config = toml::from_str(&format!("effet_fenetre = {}\n", chaine_toml("a\"b\\c\n"))).expect("parse");
+        assert_eq!(c.effet_fenetre, "a\"b\\c\n");
     }
 
     #[test]

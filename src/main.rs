@@ -22,6 +22,7 @@ mod hotkey;
 mod logging;
 mod parametres;
 mod profils;
+mod touches;
 mod tray;
 mod window;
 
@@ -128,7 +129,7 @@ fn main() {
             "RustPiz",
             &format!(
                 "v{VERSION} en cours d'exécution.\n\
-                 Clic droit sur l'icône pour le menu, \
+                 Clic droit sur l'icône puis « Paramètres » pour tout régler, \
                  Ctrl+Alt+T sur une fenêtre pour la rendre transparente."
             ),
         );
@@ -141,6 +142,11 @@ fn main() {
             let resultat = GetMessageW(&mut message, None, 0, 0);
             if resultat.0 <= 0 {
                 break; // 0 = WM_QUIT reçu, -1 = erreur
+            }
+            // Navigation clavier (Tab, Entrée, Echap) de la fenêtre de
+            // paramètres seulement : message déjà distribué si traité.
+            if parametres::traiter_message_dialogue(&message) {
+                continue;
             }
             let _ = TranslateMessage(&message);
             let _ = DispatchMessageW(&message);

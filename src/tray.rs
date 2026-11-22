@@ -1,5 +1,11 @@
 //! Icône de la zone de notification (system tray) et menu contextuel.
 //!
+//! Menu (v0.5.0) : « Paramètres », « Recharger la configuration »,
+//! « Quitter » ; double-clic sur l'icône = interrupteur général de la
+//! transparence. Tous les réglages sont dans la fenêtre de paramètres
+//! (`parametres.rs`), qui s'appuie ici sur `recharger_configuration`,
+//! `programmer_effet_dwm` et la suspension des raccourcis globaux.
+//!
 //! L'application n'a pas de fenêtre visible : on crée une fenêtre de
 //! message cachée qui reçoit :
 //! - les clics sur l'icône du tray (`Shell_NotifyIconW` + message de rappel) ;
@@ -21,14 +27,14 @@ use windows::Win32::UI::WindowsAndMessaging::{
     DestroyIcon, DestroyMenu, DestroyWindow, GetCursorPos, KillTimer, LoadIconW,
     LookupIconIdFromDirectoryEx, MessageBoxW, PostMessageW, PostQuitMessage, RegisterClassW,
     SetForegroundWindow, SetTimer, TrackPopupMenu, CW_USEDEFAULT, HICON, HMENU,
-    IDI_APPLICATION, LR_DEFAULTCOLOR, MB_ICONERROR, MB_ICONINFORMATION, MB_OK, MF_CHECKED,
-    MF_GRAYED, MF_POPUP, MF_SEPARATOR, MF_STRING, SM_CXSMICON, SM_CYSMICON, TPM_BOTTOMALIGN, TPM_NONOTIFY,
+    IDI_APPLICATION, LR_DEFAULTCOLOR, MB_ICONERROR, MB_OK, MF_SEPARATOR, MF_STRING,
+    SM_CXSMICON, SM_CYSMICON, TPM_BOTTOMALIGN, TPM_NONOTIFY,
     TPM_RETURNCMD, TPM_RIGHTBUTTON, WM_APP, WM_COMMAND, WM_CONTEXTMENU, WM_DESTROY,
     WM_ENDSESSION, WM_HOTKEY, WM_LBUTTONDBLCLK, WM_NULL, WM_QUERYENDSESSION, WM_RBUTTONUP,
     WM_TIMER, WNDCLASSW,
 };
 
-use crate::animations::{self, EffetAnimation};
+use crate::animations;
 use crate::config;
 use crate::dwm::EffetDwm;
 use crate::hotkey;
@@ -46,52 +52,23 @@ const ID_ICONE: u32 = 1;
 /// Minuteur du scan périodique des profils (toutes les 2 secondes).
 const IDT_SCAN: usize = 1;
 /// Minuteur unique des actions différées (3 secondes), le temps de
-/// replacer le curseur sur la fenêtre visée après un clic de menu.
+/// placer le curseur sur la fenêtre visée après « Valider » (effet DWM).
 const IDT_DIFFERE: usize = 2;
 const DELAI_DIFFERE_MS: u32 = 3000;
 
-// Identifiants des commandes du menu contextuel.
-const CMD_BASCULE_ACTIF: usize = 1001;
-const CMD_RESTAURER: usize = 1002;
+// Identifiants des commandes du menu contextuel (v0.5.0 : trois entrées,
+// tous les réglages sont dans la fenêtre de paramètres).
 const CMD_PARAMETRES: usize = 1003;
 const CMD_RECHARGER: usize = 1004;
 const CMD_QUITTER: usize = 1005;
-const CMD_IDENTIFIER: usize = 1006;
-const CMD_ANIM_OUVERTURE: usize = 1007;
-const CMD_ANIM_FERMETURE: usize = 1008;
-/// Case « Effet Jelly (déplacement des fenêtres) ».
-const CMD_JELLY: usize = 1009;
-/// Base des identifiants du sous-menu « Puissance du Jelly » (1400-1404).
-const CMD_JELLY_PUISSANCE_BASE: usize = 1400;
-/// Base des identifiants du sous-menu « Animation des fenêtres » (1300-1399).
-const CMD_ANIM_BASE: usize = 1300;
-/// Base des identifiants du sous-menu « Opacité globale ».
-const CMD_OPACITE_BASE: usize = 1100;
-/// Base des identifiants du sous-menu « Effet DWM ».
-const CMD_EFFET_BASE: usize = 1200;
-
-/// Choix d'opacité proposés dans le sous-menu (en %).
-const CHOIX_OPACITE: [u8; 6] = [100, 90, 80, 70, 60, 50];
-/// Puissances du Jelly proposées dans le sous-menu (en %).
-const CHOIX_JELLY: [u8; 5] = [0, 25, 50, 75, 100];
-
-/// Effets DWM proposés dans le sous-menu.
-const CHOIX_EFFETS: [EffetDwm; 5] = [
-    EffetDwm::Aucun,
-    EffetDwm::Mica,
-    EffetDwm::MicaAlt,
-    EffetDwm::Acrylique,
-    EffetDwm::Verre,
-];
 
 /// Icône embarquée dans l'exécutable (format ICO standard, 16+32 px).
 const ICONE_OCTETS: &[u8] = include_bytes!("../assets/icon.ico");
 
 /// Action à exécuter après le délai de 3 secondes.
 enum ActionDifferee {
-    /// Identifier la fenêtre sous le curseur (processus/classe/titre).
-    Identifier,
-    /// Appliquer un effet DWM à la fenêtre sous le curseur.
+    /// Appliquer un effet DWM à la fenêtre sous le curseur (choisi dans la
+    /// fenêtre de paramètres).
     Effet(EffetDwm),
 }
 
@@ -100,6 +77,9 @@ thread_local! {
     static FENETRE_MSG: Cell<isize> = const { Cell::new(0) };
     /// Action différée en attente.
     static ACTION_DIFFEREE: RefCell<Option<ActionDifferee>> = const { RefCell::new(None) };
+    /// Vrai si les raccourcis globaux ont été libérés pendant la capture
+    /// d'un raccourci dans la fenêtre de paramètres (à réenregistrer).
+    static RACCOURCIS_SUSPENDUS: Cell<bool> = const { Cell::new(false) };
 }
 
 /// Convertit une chaîne Rust en chaîne large terminée par NUL (Win32).
@@ -292,197 +272,79 @@ pub fn recharger_configuration() {
     }
     let hwnd = HWND(brut as *mut core::ffi::c_void);
     unsafe {
-        hotkey::liberer(hwnd);
         let nouvelle = config::charger();
-        hotkey::enregistrer(hwnd, &nouvelle.raccourcis);
+        // Pendant une capture (raccourcis suspendus), on ne réenregistre
+        // rien : la reprise (avec la nouvelle configuration) se fera à la
+        // fin de la capture.
+        if !RACCOURCIS_SUSPENDUS.with(|c| c.get()) {
+            hotkey::liberer(hwnd);
+            hotkey::enregistrer(hwnd, &nouvelle.raccourcis);
+        }
         animations::appliquer_config(&nouvelle);
         window::remplacer_config(nouvelle);
     }
 }
 
-/// Construit le menu contextuel (reconstruit à chaque affichage pour
-/// refléter l'état courant : case cochée, opacité sélectionnée...).
-unsafe fn construire_menu() -> Option<HMENU> {
-    let menu = CreatePopupMenu().ok()?;
-
-    // Interrupteur général.
-    let actif = window::est_actif();
-    let mut drapeaux = MF_STRING;
-    if actif {
-        drapeaux |= MF_CHECKED;
+/// Libère temporairement les raccourcis globaux (début de la capture d'un
+/// raccourci dans la fenêtre de paramètres) : sans cela, `RegisterHotKey`
+/// intercepterait la combinaison courante avant le champ de saisie, qui ne
+/// pourrait jamais la recevoir. Idempotent.
+pub fn suspendre_raccourcis() {
+    let brut = FENETRE_MSG.with(|c| c.get());
+    if brut == 0 || RACCOURCIS_SUSPENDUS.with(|c| c.get()) {
+        return;
     }
-    let _ = AppendMenuW(menu, drapeaux, CMD_BASCULE_ACTIF, w!("Transparence activée"));
+    unsafe { hotkey::liberer(HWND(brut as *mut core::ffi::c_void)) };
+    RACCOURCIS_SUSPENDUS.with(|c| c.set(true));
+    logging::info("Raccourcis globaux suspendus (capture dans les paramètres).");
+}
 
-    // Sous-menu « Opacité globale ».
-    if let Ok(sous_menu) = CreatePopupMenu() {
-        let opacite = window::opacite_courante();
-        for (index, choix) in CHOIX_OPACITE.iter().enumerate() {
-            let etiquette = large(&format!("{choix} %"));
-            let mut drapeaux = MF_STRING;
-            if *choix == opacite {
-                drapeaux |= MF_CHECKED;
-            }
-            let _ = AppendMenuW(
-                sous_menu,
-                drapeaux,
-                CMD_OPACITE_BASE + index,
-                PCWSTR(etiquette.as_ptr()),
-            );
-        }
-        let _ = AppendMenuW(menu, MF_POPUP, sous_menu.0 as usize, w!("Opacité globale"));
+/// Réenregistre les raccourcis globaux s'ils avaient été suspendus, avec
+/// ceux de la configuration EN MÉMOIRE (ceux qui étaient actifs avant la
+/// suspension ; fermeture des paramètres sans enregistrer). Sans effet
+/// sinon (après « Valider », `recharger_configuration` l'a déjà fait).
+pub fn reprendre_raccourcis() {
+    let brut = FENETRE_MSG.with(|c| c.get());
+    if brut == 0 || !RACCOURCIS_SUSPENDUS.with(|c| c.get()) {
+        return;
     }
+    RACCOURCIS_SUSPENDUS.with(|c| c.set(false));
+    let hwnd = HWND(brut as *mut core::ffi::c_void);
+    unsafe {
+        hotkey::liberer(hwnd);
+        hotkey::enregistrer(hwnd, &window::raccourcis_actifs());
+    }
+    logging::info("Raccourcis globaux rétablis (fermeture des paramètres).");
+}
 
-    // Sous-menu « Effet DWM » (appliqué à la fenêtre sous le curseur
-    // après un délai de 3 secondes, le temps de viser la fenêtre).
-    if let Ok(sous_menu) = CreatePopupMenu() {
-        for (index, effet) in CHOIX_EFFETS.iter().enumerate() {
-            let etiquette = large(effet.nom());
-            let _ = AppendMenuW(
-                sous_menu,
-                MF_STRING,
-                CMD_EFFET_BASE + index,
-                PCWSTR(etiquette.as_ptr()),
-            );
-        }
-        let _ = AppendMenuW(
-            menu,
-            MF_POPUP,
-            sous_menu.0 as usize,
-            w!("Effet DWM (fenêtre sous le curseur)"),
+/// Programme l'application de l'effet DWM `effet` à la fenêtre qui sera
+/// sous le curseur dans 3 secondes (choix validé dans les paramètres).
+pub fn programmer_effet_dwm(effet: EffetDwm) {
+    let brut = FENETRE_MSG.with(|c| c.get());
+    if brut == 0 {
+        return;
+    }
+    unsafe {
+        programmer_action_differee(
+            HWND(brut as *mut core::ffi::c_void),
+            ActionDifferee::Effet(effet),
+            &format!(
+                "Placez le curseur sur la fenêtre cible : effet « {} » dans 3 secondes…",
+                effet.nom()
+            ),
         );
     }
+}
 
-    // Animation d'ouverture / fermeture des fenêtres.
-    let _ = AppendMenuW(menu, MF_SEPARATOR, 0, PCWSTR::null());
-    if let Ok(sous_menu) = CreatePopupMenu() {
-        let courant = animations::effet();
-        // Effets à shader (v0.4.7) : sous-menu imbriqué « Effets GPU
-        // (shaders) », après un séparateur. Les identifiants restent
-        // CMD_ANIM_BASE + index dans EffetAnimation::TOUS.
-        let shaders = CreatePopupMenu().ok();
-        for (index, effet) in EffetAnimation::TOUS.iter().enumerate() {
-            let shader = effet.moteur() == animations::Moteur::Shader;
-            let mut drapeaux = MF_STRING;
-            if *effet == courant {
-                drapeaux |= MF_CHECKED;
-            }
-            // Effet non rendu par ce GPU (flou sans IDCompositionDevice3,
-            // shader non compilé).
-            let disponible = animations::effet_disponible(*effet);
-            if !disponible {
-                drapeaux |= MF_GRAYED;
-            }
-            // « (indisponible : voir journal) » pour un effet à shader non
-            // disponible (shader non compilé ou en échec).
-            let texte = if shader && !disponible {
-                format!("{} (indisponible : voir journal)", effet.libelle_menu())
-            } else {
-                effet.libelle_menu()
-            };
-            let etiquette = large(&texte);
-            let parent = match (shader, shaders) {
-                (true, Some(m)) => m,
-                _ => sous_menu,
-            };
-            let _ = AppendMenuW(
-                parent,
-                drapeaux,
-                CMD_ANIM_BASE + index,
-                PCWSTR(etiquette.as_ptr()),
-            );
-        }
-        if let Some(m) = shaders {
-            let _ = AppendMenuW(sous_menu, MF_SEPARATOR, 0, PCWSTR::null());
-            let _ = AppendMenuW(sous_menu, MF_POPUP, m.0 as usize, w!("Effets GPU (shaders)"));
-        }
-        let _ = AppendMenuW(menu, MF_POPUP, sous_menu.0 as usize, w!("Animation des fenêtres"));
-    }
-    let indisponible = animations::indisponibilite().is_some();
-    for (id, libelle, coche) in [
-        (
-            CMD_ANIM_OUVERTURE,
-            "Animer l'ouverture des fenêtres",
-            animations::ouverture_active(),
-        ),
-        (
-            CMD_ANIM_FERMETURE,
-            "Animer la fermeture des fenêtres",
-            animations::fermeture_active(),
-        ),
-    ] {
-        let mut drapeaux = MF_STRING;
-        if coche {
-            drapeaux |= MF_CHECKED;
-        }
-        let texte = if indisponible {
-            drapeaux |= MF_GRAYED;
-            format!("{libelle} (indisponible)")
-        } else {
-            libelle.to_string()
-        };
-        let etiquette = large(&texte);
-        let _ = AppendMenuW(menu, drapeaux, id, PCWSTR(etiquette.as_ptr()));
-    }
-
-    // Effet Jelly (déformation élastique pendant le déplacement).
-    {
-        let coche = animations::jelly_actif();
-        let mut drapeaux = MF_STRING;
-        if coche {
-            drapeaux |= MF_CHECKED;
-        }
-        let libelle = "Effet Jelly (déplacement des fenêtres)";
-        let texte = if indisponible {
-            drapeaux |= MF_GRAYED;
-            format!("{libelle} (indisponible)")
-        } else if coche && animations::jelly_desactive() {
-            // Non grisé : décocher puis recocher réarme le Jelly.
-            format!("{libelle} (désactivé : voir journal)")
-        } else if coche && animations::jelly_puissance() == 0 {
-            format!("{libelle} (puissance 0 : aucun mouvement)")
-        } else {
-            libelle.to_string()
-        };
-        let etiquette = large(&texte);
-        let _ = AppendMenuW(menu, drapeaux, CMD_JELLY, PCWSTR(etiquette.as_ptr()));
-    }
-    if let Ok(sous_menu) = CreatePopupMenu() {
-        let palier = animations::jelly_palier();
-        for (index, choix) in CHOIX_JELLY.iter().enumerate() {
-            let texte = match choix {
-                0 => "0 % (aucun mouvement)".to_string(),
-                100 => "100 % (très forte déformation)".to_string(),
-                v => format!("{v} %"),
-            };
-            let etiquette = large(&texte);
-            let mut drapeaux = MF_STRING;
-            if *choix == palier {
-                drapeaux |= MF_CHECKED;
-            }
-            let _ = AppendMenuW(
-                sous_menu,
-                drapeaux,
-                CMD_JELLY_PUISSANCE_BASE + index,
-                PCWSTR(etiquette.as_ptr()),
-            );
-        }
-        let _ = AppendMenuW(menu, MF_POPUP, sous_menu.0 as usize, w!("Puissance du Jelly"));
-    }
-
-    let _ = AppendMenuW(menu, MF_SEPARATOR, 0, PCWSTR::null());
-    let _ = AppendMenuW(
-        menu,
-        MF_STRING,
-        CMD_IDENTIFIER,
-        w!("Identifier la fenêtre sous le curseur…"),
-    );
-    let _ = AppendMenuW(menu, MF_STRING, CMD_RESTAURER, w!("Restaurer toutes les fenêtres"));
-    let _ = AppendMenuW(menu, MF_SEPARATOR, 0, PCWSTR::null());
-    let _ = AppendMenuW(menu, MF_STRING, CMD_PARAMETRES, w!("Paramètres…"));
+/// Construit le menu contextuel : trois entrées (tous les réglages sont
+/// dans la fenêtre de paramètres ; double-clic sur l'icône = bascule de la
+/// transparence).
+unsafe fn construire_menu() -> Option<HMENU> {
+    let menu = CreatePopupMenu().ok()?;
+    let _ = AppendMenuW(menu, MF_STRING, CMD_PARAMETRES, w!("Paramètres"));
     let _ = AppendMenuW(menu, MF_STRING, CMD_RECHARGER, w!("Recharger la configuration"));
     let _ = AppendMenuW(menu, MF_SEPARATOR, 0, PCWSTR::null());
     let _ = AppendMenuW(menu, MF_STRING, CMD_QUITTER, w!("Quitter"));
-
     Some(menu)
 }
 
@@ -527,81 +389,13 @@ unsafe fn programmer_action_differee(hwnd: HWND, action: ActionDifferee, message
     }
 }
 
-/// Identifie la fenêtre sous le curseur et affiche ses caractéristiques
-/// dans une boîte de dialogue (pour écrire des profils facilement).
-unsafe fn identifier_fenetre_sous_curseur(hwnd: HWND) {
-    let Some(cible) = window::fenetre_sous_curseur() else {
-        logging::avertir("Identification : aucune fenêtre sous le curseur.");
-        return;
-    };
-    let (processus, classe, titre) = window::infos_fenetre(cible);
-    logging::info(&format!(
-        "Identification : processus={}, classe={}, titre={}",
-        logging::sans_controle(&processus),
-        logging::sans_controle(&classe),
-        logging::sans_controle(&titre)
-    ));
-    let texte = format!(
-        "Fenêtre sous le curseur :\r\n\r\n\
-         Processus : {processus}\r\n\
-         Classe : {classe}\r\n\
-         Titre : {titre}\r\n\r\n\
-         Exemple de profil pour config.toml :\r\n\
-         [[profils]]\r\n\
-         nom = \"Mon profil\"\r\n\
-         processus = \"{processus}\"\r\n\
-         classe = \"{classe}\"\r\n\
-         opacite = 85\r\n\
-         effet_dwm = \"aucun\""
-    );
-    let texte = large(&texte);
-    MessageBoxW(
-        Some(hwnd),
-        PCWSTR(texte.as_ptr()),
-        w!("RustPiz — Identification de fenêtre"),
-        MB_OK | MB_ICONINFORMATION,
-    );
-}
-
 /// Exécute l'action associée à une commande du menu.
 unsafe fn traiter_commande(hwnd: HWND, id: usize) {
     match id {
-        CMD_BASCULE_ACTIF => window::basculer_activation(),
-        CMD_RESTAURER => window::restaurer_toutes(),
         CMD_PARAMETRES => parametres::ouvrir(),
-        CMD_IDENTIFIER => programmer_action_differee(
-            hwnd,
-            ActionDifferee::Identifier,
-            "Placez le curseur sur la fenêtre à identifier (3 secondes)…",
-        ),
         CMD_RECHARGER => recharger_configuration(),
-        CMD_ANIM_OUVERTURE => animations::basculer_ouverture(),
-        CMD_ANIM_FERMETURE => animations::basculer_fermeture(),
-        CMD_JELLY => animations::basculer_jelly(),
-        _ if (CMD_JELLY_PUISSANCE_BASE..CMD_JELLY_PUISSANCE_BASE + CHOIX_JELLY.len()).contains(&id) => {
-            animations::definir_puissance_jelly(CHOIX_JELLY[id - CMD_JELLY_PUISSANCE_BASE]);
-        }
-        _ if (CMD_ANIM_BASE..CMD_ANIM_BASE + EffetAnimation::TOUS.len()).contains(&id) => {
-            animations::definir_effet(EffetAnimation::TOUS[id - CMD_ANIM_BASE]);
-        }
         CMD_QUITTER => {
             let _ = DestroyWindow(hwnd);
-        }
-        _ if (CMD_OPACITE_BASE..CMD_OPACITE_BASE + CHOIX_OPACITE.len()).contains(&id) => {
-            let index = id - CMD_OPACITE_BASE;
-            window::definir_opacite(CHOIX_OPACITE[index]);
-        }
-        _ if (CMD_EFFET_BASE..CMD_EFFET_BASE + CHOIX_EFFETS.len()).contains(&id) => {
-            let index = id - CMD_EFFET_BASE;
-            let effet = CHOIX_EFFETS[index];
-            programmer_action_differee(
-                hwnd,
-                ActionDifferee::Effet(effet),
-                &format!(
-                    "Placez le curseur sur la fenêtre cible : effet « {} » dans 3 secondes…",
-                    effet.nom()
-                ),
-            );
         }
         _ => {}
     }
@@ -642,14 +436,8 @@ unsafe extern "system" fn procedure_fenetre(
                 IDT_DIFFERE => {
                     let _ = KillTimer(Some(hwnd), IDT_DIFFERE);
                     let action = ACTION_DIFFEREE.with(|a| a.borrow_mut().take());
-                    match action {
-                        Some(ActionDifferee::Identifier) => {
-                            identifier_fenetre_sous_curseur(hwnd)
-                        }
-                        Some(ActionDifferee::Effet(effet)) => {
-                            window::appliquer_effet_sous_curseur(effet)
-                        }
-                        None => {}
+                    if let Some(ActionDifferee::Effet(effet)) = action {
+                        window::appliquer_effet_sous_curseur(effet);
                     }
                 }
                 _ => {}

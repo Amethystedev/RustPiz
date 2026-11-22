@@ -143,10 +143,7 @@ use std::collections::{HashMap, VecDeque};
 use std::time::Instant;
 
 pub use catalogue::EffetAnimation;
-pub use jelly::{
-    basculer_jelly, definir_puissance_jelly, jelly_actif, jelly_desactive, jelly_palier,
-    jelly_puissance,
-};
+pub use jelly::{jelly_actif, jelly_desactive};
 
 use windows::core::w;
 use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
@@ -175,7 +172,7 @@ use precoce::{Adaptation, Mode, RaisonBascule};
 use surimpression::AnimationActive;
 use transitions::{texte_lecture, Moment, Sondes};
 
-use crate::config::{self, Config};
+use crate::config::Config;
 use crate::logging;
 use crate::tray;
 use crate::window;
@@ -585,62 +582,51 @@ pub fn appliquer_config(config: &Config) {
     jelly::appliquer_config(config, "configuration rechargée");
 }
 
-/// Effet courant.
-pub fn effet() -> EffetAnimation {
-    lire().effet
-}
-
 /// Animation d'ouverture activée ?
 pub fn ouverture_active() -> bool {
     lire().ouverture
 }
 
-/// Animation de fermeture activée ?
-pub fn fermeture_active() -> bool {
-    lire().fermeture
-}
-
-/// Choisit l'effet d'animation et l'enregistre.
-pub fn definir_effet(effet: EffetAnimation) {
-    // Effets à shader : tout choix d'effet dans le menu oublie les échecs
-    // mémorisés (un effet grisé redevient sélectionnable et sa compilation
-    // sera retentée à son prochain choix).
-    for e in EffetAnimation::TOUS {
-        if e.moteur() == Moteur::Shader {
-            effet_gpu::oublier_echec(e);
+/// Réarmements explicites demandés à la validation de la fenêtre de
+/// paramètres (équivalents de ceux de l'ancien menu), à appeler AVANT
+/// [`appliquer_config`] (qui réévalue ensuite l'infrastructure) :
+/// - `effet_choisi` : l'utilisateur a choisi un effet dans la liste ->
+///   les échecs mémorisés des effets à shader sont oubliés (ancien
+///   `definir_effet` : compilation retentée au prochain préchauffage) ;
+/// - `ouverture` : « Animer l'ouverture » (ré)activée -> l'ouverture
+///   désactivée après des échecs de masquage est réarmée et le mode
+///   adaptatif réinitialisé (ancien `basculer_ouverture`) ;
+/// - `jelly` : « Activer Jelly » (ré)activé -> Jelly réarmé (ancien
+///   `basculer_jelly`).
+///
+/// Aucune écriture de configuration ici (la fenêtre de paramètres écrit
+/// `config.toml` elle-même, une seule fois).
+pub fn rearmer(effet_choisi: bool, ouverture: bool, jelly: bool) {
+    if effet_choisi {
+        for e in EffetAnimation::TOUS {
+            if e.moteur() == Moteur::Shader {
+                effet_gpu::oublier_echec(e);
+            }
         }
     }
-    let mut r = lire();
-    r.effet = effet;
-    ecrire(r);
-    persister(r);
-    reevaluer("effet choisi dans le menu");
-}
-
-/// Bascule l'animation d'ouverture et l'enregistre. La réactivation
-/// réarme l'ouverture si elle avait été désactivée après des échecs.
-pub fn basculer_ouverture() {
-    let mut r = lire();
-    r.ouverture = !r.ouverture;
-    ecrire(r);
-    if r.ouverture {
+    if ouverture {
         avec(|s| {
             s.ouverture_desactivee = false;
             s.echecs_masquage = 0;
             s.adaptation.reinitialiser();
         });
     }
-    persister(r);
-    reevaluer("case « Animer l'ouverture »");
-}
-
-/// Bascule l'animation de fermeture et l'enregistre.
-pub fn basculer_fermeture() {
-    let mut r = lire();
-    r.fermeture = !r.fermeture;
-    ecrire(r);
-    persister(r);
-    reevaluer("case « Animer la fermeture »");
+    if jelly {
+        jelly::rearmer();
+    }
+    if effet_choisi || ouverture || jelly {
+        logging::info(&format!(
+            "Animations : réarmement demandé par les paramètres (effet={}, ouverture={}, jelly={}).",
+            oui_non(effet_choisi),
+            oui_non(ouverture),
+            oui_non(jelly)
+        ));
+    }
 }
 
 /// Raison pour laquelle les animations sont indisponibles (`None` = OK ou
@@ -672,18 +658,6 @@ pub fn effet_disponible(effet: EffetAnimation) -> bool {
         },
         Err(_) => true,
     })
-}
-
-/// Écrit les trois clés dans `config.toml` (hors de tout emprunt RefCell).
-fn persister(r: Reglages) {
-    let cles = [
-        ("effet_fenetre", format!("\"{}\"", r.effet.nom_config())),
-        ("effet_ouverture", r.ouverture.to_string()),
-        ("effet_fermeture", r.fermeture.to_string()),
-    ];
-    if let Err(e) = config::enregistrer_cles_racine(&cles) {
-        logging::erreur(&format!("Enregistrement des réglages d'animation : {e}"));
-    }
 }
 
 // ---------------------------------------------------------------------------

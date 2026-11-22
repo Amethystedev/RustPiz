@@ -1,165 +1,239 @@
 # RustPiz
 
-**RustPiz** (contraction de *Rust* et *Compiz*) est une application Windows native
-en **Rust** qui habille les fenêtres de Windows 11 d'effets modernes : transparence,
-effets DWM (Mica, Acrylique, Verre), animations d'ouverture/fermeture et effet
-**Jelly** (fenêtres gélatineuses au déplacement), le tout rendu par le GPU.
-Successeur de l'ancien projet « Transparent Windows » (inspiré du vieil outil
-« System Transparency »).
+> **🤖 Projet entièrement généré par Claude (Anthropic).**
+> Aucune ligne de code de ce dépôt n'a été écrite par un humain : le code Rust,
+> les shaders HLSL, la documentation et ce README ont été produits par Claude.
+> Le rôle de l'humain s'est limité à décrire les besoins, tester l'application
+> sous Windows et valider (ou non) chaque version.
 
-- Pilotage depuis l'**icône de la zone de notification**, des **raccourcis clavier
-  globaux** et une **fenêtre de paramètres native**.
+**RustPiz** (contraction de *Rust* et *Compiz*) est une application Windows native
+en **Rust** qui habille les fenêtres de Windows 11 d'effets modernes, le tout
+rendu par le GPU. Elle repose sur trois grandes fonctionnalités :
+
+- 🪟 **Transparence** des fenêtres et effets DWM (Mica, Acrylique, Verre) ;
+- 🍮 **Jelly** : les fenêtres se déforment élastiquement quand on les déplace ;
+- ✨ **Effets d'ouverture et de fermeture** des fenêtres (fondu, zoom, feu,
+  portail, pixellisation, etc.).
+
+Tout se pilote depuis l'**icône de la zone de notification**, une **fenêtre de
+paramètres native** et des **raccourcis clavier globaux**.
+
 - Aucune dépendance à .NET, exécutable autonome (~1 Mo).
 - Conçu pour Windows 11 (build ≥ 22000, vérifié avec 26H2), x64.
+- Aucune injection dans les autres processus.
+
+## Sommaire
+
+1. [Installation](#installation)
+2. [Utilisation](#utilisation)
+3. [Transparence](#transparence)
+4. [Jelly](#jelly)
+5. [Effets d'ouverture et de fermeture](#effets-douverture-et-de-fermeture)
+6. [Configuration](#configuration-appdatarustpizconfigtoml)
+7. [Journalisation et limitations](#journalisation)
+8. [Compilation](#compilation-pour-les-développeurs)
+9. [Licence](#licence)
 
 ## Installation
 
-1. Copiez `rustpiz.exe` où vous voulez (ex. `C:\Outils\`).
+1. Téléchargez `rustpiz-vX.Y.Z-windows-x64.exe` depuis la page
+   [Releases](https://github.com/Amethystedev/RustPiz/releases) et placez-le où
+   vous voulez (ex. `C:\Outils\`).
 2. Double-cliquez : une **notification** confirme le démarrage et une icône
    apparaît dans la zone de notification (éventuellement sous le chevron « ^ »).
 3. Au premier lancement, la configuration est créée dans
    `%APPDATA%\RustPiz\config.toml`.
 
-Pour un démarrage automatique : placez un raccourci vers l'exécutable dans
-`shell:startup` (`Win+R` → `shell:startup`).
+Pour un démarrage automatique de Windows : placez un raccourci vers l'exécutable
+dans `shell:startup` (`Win+R` → `shell:startup`).
 
 > ⚠️ Au premier lancement, **SmartScreen** peut afficher un avertissement
 > « éditeur inconnu » (binaire non signé) : « Informations complémentaires » →
 > « Exécuter quand même ».
 
-## Compilation (pour les développeurs)
-
-```bash
-cargo check
-cargo build --release
-```
-
-La cible par défaut est `x86_64-pc-windows-gnu` (voir `.cargo/config.toml`).
-L'exécutable est généré dans
-`target/x86_64-pc-windows-gnu/release/rustpiz.exe`.
-
 ## Utilisation
 
-### Transparence automatique de l'Explorateur (activée par défaut)
+### L'icône de la zone de notification
 
-- **Au démarrage** de RustPiz, toutes les fenêtres de l'Explorateur
-  déjà ouvertes sont rendues transparentes avec l'opacité de base.
-- **Chaque nouvelle fenêtre** de l'Explorateur ouverte ensuite est détectée
-  (scan toutes les 2 secondes) et rendue transparente automatiquement.
-- Vous pouvez ensuite **personnaliser chaque fenêtre** individuellement :
-  `Ctrl+Alt+T` pour basculer, `Ctrl+Alt+Haut/Bas` pour ajuster l'opacité, et
-  le menu **Effet DWM** pour Mica/Acrylique/Verre.
-- Ce comportement se désactive via la case « Explorateur automatiquement
-  transparent » dans les **Paramètres**, ou `transparence_explorateur = false`
-  dans `config.toml`.
+Un **clic droit** sur l'icône ouvre un menu à trois entrées :
 
-### Raccourcis clavier (par défaut)
+| Entrée                         | Action                                                             |
+| ------------------------------ | ------------------------------------------------------------------ |
+| **Paramètres**                 | Ouvre la fenêtre de paramètres (tous les réglages)                 |
+| **Recharger la configuration** | Applique les modifications faites à la main dans `config.toml`     |
+| **Quitter**                    | Restaure toutes les fenêtres puis ferme l'application              |
 
-Les raccourcis agissent sur la **fenêtre située sous le curseur de la souris** :
+Un **double-clic** sur l'icône active / désactive la transparence (interrupteur
+général ; la désactivation restaure toutes les fenêtres).
 
-| Raccourci        | Action                                             |
-| ---------------- | -------------------------------------------------- |
-| `Ctrl+Alt+T`     | Activer / désactiver la transparence de la fenêtre |
-| `Ctrl+Alt+Haut`  | Augmenter l'opacité (+10 %)                        |
-| `Ctrl+Alt+Bas`   | Diminuer l'opacité (−10 %)                         |
+<!-- Capture d'écran à ajouter : le menu du clic droit sur l'icône -->
 
-### Menu de l'icône (clic droit)
+### La fenêtre de paramètres
 
-- **Transparence activée** : interrupteur général (double-clic sur l'icône fait
-  la même chose). La désactivation restaure toutes les fenêtres.
-- **Opacité globale** : opacité appliquée par défaut (50 à 100 %).
-- **Effet DWM (fenêtre sous le curseur)** : Aucun / Mica / Mica Alt / Acrylique /
-  Verre. Après le choix, vous avez **3 secondes** pour placer le curseur sur la
-  fenêtre cible.
-- **Identifier la fenêtre sous le curseur…** : après 3 secondes, affiche le
-  processus, la classe et le titre de la fenêtre visée, avec un exemple de
-  profil prêt à copier dans `config.toml`.
-- **Restaurer toutes les fenêtres** : remet l'opacité et les effets d'origine.
-- **Paramètres…** : ouvre la fenêtre de paramètres native.
-- **Recharger la configuration** : applique les modifications du fichier sans
-  redémarrer.
-- **Animation des fenêtres** : choix de l'effet, cases « Animer l'ouverture » et
-  « Animer la fermeture » (voir plus bas).
-- **Effet Jelly (déplacement des fenêtres)** : case à cocher d'activation, et
-  sous-menu **Puissance du Jelly** (0 / 25 / 50 / 75 / 100 %, 0 = aucun mouvement).
-- **Quitter** : restaure toutes les fenêtres puis ferme l'application.
+La fenêtre compte **trois onglets**, un par grande fonctionnalité. À son
+ouverture, elle relit `config.toml` pour pré-remplir tous les réglages.
 
-### Fenêtre de paramètres
+- **Valider** enregistre `config.toml` et applique les réglages immédiatement ;
+- **Fermer** (ou `Echap`, ou la croix) ferme la fenêtre **sans rien enregistrer**.
 
-Opacité par défaut (curseur 10-100 %), activation au démarrage, et les trois
-raccourcis clavier. **Enregistrer** met à jour `config.toml` et applique
-immédiatement (les raccourcis sont réenregistrés à chaud).
+Navigation au clavier : `Tab` passe au contrôle suivant, `Echap` ferme.
 
-## Effets DWM (Windows 11 22H2 et +)
+<!-- Capture d'écran à ajouter : la fenêtre de paramètres (vue d'ensemble) -->
 
-| Effet        | Description                                              |
-| ------------ | -------------------------------------------------------- |
-| **Mica**     | Matière opaque teintée du fond d'écran                   |
-| **Mica Alt** | Variante Mica plus prononcée (fenêtres à onglets)        |
-| **Acrylique**| Flou translucide                                         |
-| **Verre**    | Feuille de verre complète (`DwmExtendFrameIntoClientArea`) |
+### Raccourcis clavier
 
-Les effets sont restaurés à leur état d'origine par « Restaurer toutes les
-fenêtres » et à la fermeture de l'application.
+Les raccourcis agissent sur la **fenêtre située sous le curseur de la souris**.
+Ils sont modifiables dans l'onglet *Param Transparence*.
 
-## Effets d'ouverture/fermeture
+| Raccourci par défaut | Action                                             |
+| -------------------- | -------------------------------------------------- |
+| `Ctrl+Alt+T`         | Activer / désactiver la transparence de la fenêtre |
+| `Ctrl+Alt+Haut`      | Augmenter l'opacité (+10 %)                        |
+| `Ctrl+Alt+Bas`       | Diminuer l'opacité (−10 %)                         |
 
-Les fenêtres des autres applications peuvent être animées à l'ouverture et à
-la fermeture.
+Pour changer un raccourci : cliquez dans le champ correspondant puis appuyez sur
+la combinaison voulue (`Echap` annule la capture). Une combinaison doit contenir
+`Ctrl`, `Alt` ou `Win` (sauf les touches `F1` à `F24`), et deux raccourcis ne
+peuvent pas être identiques.
 
-- **Effets disponibles** : Aucun, Fondu, Zoom, Glissement, Rétrécissement,
-  Télévision, Flou.
-- **Menu** : clic droit sur l'icône, sous-menu « Animation des fenêtres »
-  (choix de l'effet), puis « Animer l'ouverture des fenêtres » et « Animer la
-  fermeture des fenêtres » (cases à cocher). Ces animations sont désactivées
-  par défaut.
-- **Clés de configuration** (racine de `config.toml`) : `effet_fenetre`
-  (`"aucun"`, `"fondu"`, `"zoom"`, etc.), `effet_ouverture` et
-  `effet_fermeture` (`true` / `false`).
-- **Principe (GPU)** : le contenu de la fenêtre est capturé par
-  Windows.Graphics.Capture (textures Direct3D 11 laissées sur le GPU), puis
-  rejoué dans une fenêtre de surimpression DirectComposition dont les
-  propriétés (opacité, échelle, décalage, flou) sont animées par le
-  compositeur Windows. Aucune injection dans les autres processus.
-- **Limites** :
-  - la fermeture animée fonctionne surtout pour la fenêtre au premier plan
-    (seule celle-ci est suivie en continu) ;
-  - l'ouverture masque temporairement la fenêtre (transparence quasi totale)
-    et attend qu'elle soit réellement peinte avant de jouer l'effet (v0.4.6) :
-    la fenêtre apparaît donc avec un léger retard (environ 0,1 à 0,4 s, 0,75 s
-    au plus) ; si aucune image exploitable n'arrive à temps, elle s'affiche
-    sans animation ; si Windows refuse le masquage, l'animation d'ouverture
-    est désactivée automatiquement pour la session ;
-  - si le processus est tué pendant une animation d'ouverture, la fenêtre
-    concernée pourrait rester masquée : la fermer puis la rouvrir ;
-  - les effets de feu et de verre brisé ne sont pas inclus.
+## Transparence
 
-> Le dossier de configuration est `%APPDATA%\RustPiz`. Un ancien dossier
-> `%APPDATA%\TransparentWindows` est migré automatiquement au premier lancement.
+Rend les fenêtres plus ou moins transparentes (`WS_EX_LAYERED` +
+`SetLayeredWindowAttributes`) et leur applique des effets DWM modernes. L'état
+d'origine de chaque fenêtre est restauré exactement à la désactivation et à la
+fermeture de l'application.
 
-## Effet Jelly (v0.4)
+<!-- Capture d'écran à ajouter : onglet « Param Transparence » -->
+<!-- Vidéo à ajouter : une fenêtre qui devient transparente, puis effets Mica / Acrylique / Verre -->
+
+### Onglet « Param Transparence »
+
+| Réglage                                              | Description                                                                                 |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| **Activer Transparence**                             | Interrupteur général (équivalent du double-clic sur l'icône)                                |
+| **Activer la transparence au démarrage**             | Active la transparence dès le lancement de RustPiz                                          |
+| **Explorateur automatiquement transparent**          | Rend transparentes les fenêtres de l'Explorateur déjà ouvertes et les nouvelles (scan toutes les 2 s) |
+| **Opacité par défaut**                               | Curseur de 10 % (très transparent) à 100 % (opaque)                                         |
+| **Effet DWM (fenêtre sous le curseur)**              | Aucun, Mica, Mica Alt, Acrylique ou Verre ; appliqué **3 secondes après Valider** à la fenêtre sous le curseur (le choix « (ne rien changer) » n'y touche pas) |
+| **Raccourci bascule / Opacité − / Opacité +**        | Champs de capture des trois raccourcis globaux                                              |
+
+### Effets DWM (Windows 11 22H2 et +)
+
+| Effet         | Description                                                |
+| ------------- | ---------------------------------------------------------- |
+| **Mica**      | Matière opaque teintée du fond d'écran                     |
+| **Mica Alt**  | Variante Mica plus prononcée (fenêtres à onglets)          |
+| **Acrylique** | Flou translucide                                           |
+| **Verre**     | Feuille de verre complète (`DwmExtendFrameIntoClientArea`) |
+
+Les effets sont restaurés à leur état d'origine en désactivant la transparence
+et à la fermeture de l'application.
+
+### Protections intégrées
+
+Par défaut, RustPiz **ignore** : la barre des tâches, le menu Démarrer, le
+centre de notifications, les menus contextuels du shell, le bureau, l'écran de
+verrouillage et **toute fenêtre plein écran** (cas de la plupart des jeux).
+
+### Profils automatiques
+
+Dans `config.toml`, des `[[profils]]` appliquent une opacité et/ou un effet DWM
+aux nouvelles fenêtres selon leur processus, leur classe ou leur titre
+(voir [Configuration](#configuration-appdatarustpizconfigtoml)).
+
+## Jelly
 
 Quand on **déplace une fenêtre** en glissant sa barre de titre, elle se déforme
 élastiquement (traînée proportionnelle à la vitesse) puis revient à sa forme avec
 un rebond amorti, façon [Jello](https://github.com/iamDecode/Jello) sur macOS.
 
-- **Menu** : case « Effet Jelly (déplacement des fenêtres) » et sous-menu
-  « Puissance du Jelly » (0 à 100 %). Désactivé par défaut ; désactivé ou à 0 %,
-  il ne consomme rien.
-- **Clés de configuration** : `jelly_actif` (`true` / `false`) et
-  `jelly_puissance` (0 à 100, défaut 50).
-- **Principe (100 % GPU)** : la fenêtre est capturée (Windows.Graphics.Capture), sa
-  texture reste sur le GPU et est dessinée par Direct3D 11 sur un **vrai maillage
-  courbe** simulé par un système masses-ressorts, puis présentée via une swapchain
-  de composition DirectComposition, synchronisée sur le rafraîchissement de l'écran.
-  Aucune injection dans les autres processus.
-- **Limites** : le contenu de la fenêtre est figé pendant le glissement, sans ombre
-  DWM ; un Snap, un redimensionnement ou un changement de DPI terminent l'effet
-  sans rebond ; si le GPU matériel est indisponible ou le pipeline échoue, le Jelly
-  est désactivé pour la session (notification + `journal.log`) ; si le processus est
-  tué pendant l'effet, la fenêtre peut rester quasi invisible : la fermer/rouvrir.
+<!-- Capture d'écran à ajouter : onglet « Param Jelly » -->
+<!-- Vidéo à ajouter : une fenêtre qu'on déplace avec l'effet Jelly -->
+
+### Onglet « Param Jelly »
+
+| Réglage                | Description                                                    |
+| ---------------------- | -------------------------------------------------------------- |
+| **Activer Jelly**      | Active l'effet (désactivé par défaut)                          |
+| **Puissance de Jelly** | Curseur de 0 % à 100 %, toutes les valeurs (0 % = aucun mouvement) |
+
+Désactivé ou à 0 %, l'effet ne consomme rien.
+
+### Principe (100 % GPU)
+
+La fenêtre est capturée (Windows.Graphics.Capture), sa texture reste sur le GPU
+et est dessinée par Direct3D 11 sur un **vrai maillage courbe** simulé par un
+système masses-ressorts, puis présentée via une swapchain de composition
+DirectComposition, synchronisée sur le rafraîchissement de l'écran.
+
+### Limites
+
+- le contenu de la fenêtre est figé pendant le glissement, sans ombre DWM ;
+- un Snap, un redimensionnement ou un changement de DPI terminent l'effet sans
+  rebond ;
+- si le GPU matériel est indisponible ou si le pipeline échoue, le Jelly est
+  désactivé pour la session (notification + `journal.log`) ;
+- si le processus est tué pendant l'effet, la fenêtre peut rester quasi
+  invisible : la fermer puis la rouvrir.
+
+## Effets d'ouverture et de fermeture
+
+Les fenêtres des autres applications peuvent être animées à l'ouverture et à la
+fermeture, avec le même effet dans les deux sens (l'ouverture est la fermeture
+jouée à l'envers).
+
+<!-- Capture d'écran à ajouter : onglet « Param Effets Ouverture/Fermeture » -->
+<!-- Vidéo à ajouter : ouverture et fermeture de fenêtres avec différents effets -->
+
+### Onglet « Param Effets Ouverture/Fermeture »
+
+| Réglage                                  | Description                                          |
+| ---------------------------------------- | ---------------------------------------------------- |
+| **Animer l'ouverture des fenêtres**      | Interrupteur (désactivé par défaut)                  |
+| **Animer la fermeture des fenêtres**     | Interrupteur (désactivé par défaut)                  |
+| **Effet d'animation des fenêtres**       | Liste de tous les effets disponibles                 |
+
+### Effets disponibles
+
+- **Effets classiques** : Aucun, Fondu, Zoom, Glissement, Rétrécissement,
+  Télévision (extinction), Flou.
+- **Effets à shaders (HLSL, rendus par le GPU)** : Pixellisation, Balayage de
+  pixels, Glitch, Roue de pixels, Fonte, Hexagones, Télévision parasitée, Plané,
+  Apparition, Énergie A, Énergie B, Feu, Incinération, Portail.
+- **Approximations** (suffixe « (approx.) » dans la liste) : Verre brisé,
+  Désintégration, Matrix, Feux follets.
+
+Ces effets s'inspirent de l'extension GNOME Shell
+[Burn-My-Windows](https://github.com/Schneegans/Burn-My-Windows) ; les shaders
+sont toutefois **écrits indépendamment** (Burn-My-Windows est sous GPL-3, ce
+projet sous MIT). Si la compilation d'un shader échoue, l'effet est signalé
+« (indisponible : voir journal) » et RustPiz se replie sur le fondu.
+
+### Principe (GPU)
+
+Le contenu de la fenêtre est capturé par Windows.Graphics.Capture (textures
+Direct3D 11 laissées sur le GPU), puis rejoué dans une fenêtre de surimpression
+DirectComposition : soit animée par le compositeur Windows (effets classiques),
+soit rendue par un pixel shader (effets à shaders).
+
+### Limites
+
+- la fermeture animée fonctionne surtout pour la fenêtre au premier plan (seule
+  celle-ci est suivie en continu) ;
+- l'ouverture masque temporairement la fenêtre et attend qu'elle soit réellement
+  peinte avant de jouer l'effet : elle apparaît donc avec un léger retard
+  (environ 0,1 à 0,4 s, 0,75 s au plus) ; si aucune image exploitable n'arrive à
+  temps, elle s'affiche sans animation ; si Windows refuse le masquage,
+  l'animation d'ouverture est désactivée automatiquement pour la session ;
+- si le processus est tué pendant une animation d'ouverture, la fenêtre
+  concernée pourrait rester masquée : la fermer puis la rouvrir ;
+- l'effet « T-Rex Attack » de Burn-My-Windows n'est pas reproduit.
 
 ## Configuration (`%APPDATA%\RustPiz\config.toml`)
+
+Tous les réglages de la fenêtre de paramètres sont enregistrés dans ce fichier.
+Vous pouvez aussi l'éditer à la main (puis **Recharger la configuration** dans
+le menu de l'icône, ou redémarrer).
 
 ```toml
 opacite_defaut = 80            # opacité en % (10 = très transparent, 100 = opaque)
@@ -192,19 +266,17 @@ processus = "notepad.exe"
 opacite = 85
 ```
 
-Après modification : **Recharger la configuration** dans le menu, ou redémarrer.
-
-### Protections intégrées
-
-Par défaut, l'application **ignore** : la barre des tâches, le menu Démarrer, le
-centre de notifications, les menus contextuels du shell, le bureau, l'écran de
-verrouillage et **toute fenêtre plein écran** (cas de la plupart des jeux).
+> Le dossier de configuration est `%APPDATA%\RustPiz`. Un ancien dossier
+> `%APPDATA%\TransparentWindows` (nom du projet avant l'ajout des effets) est
+> migré automatiquement au premier lancement.
 
 ## Journalisation
 
-Les événements et erreurs sont consignés dans
-`%APPDATA%\RustPiz\journal.log` (y compris la version de Windows
-détectée). En cas de comportement inattendu, c'est le premier fichier à consulter.
+Les événements et erreurs sont consignés dans `%APPDATA%\RustPiz\journal.log`
+(y compris la version de Windows détectée). En cas de comportement inattendu,
+c'est le premier fichier à consulter. Il contient le processus, la classe et le
+début du titre des fenêtres concernées par les animations : relisez-le avant de
+le partager.
 
 ## Limitations connues
 
@@ -215,6 +287,19 @@ détectée). En cas de comportement inattendu, c'est le premier fichier à consu
 - Si le processus est tué brutalement (gestionnaire des tâches), les fenêtres
   modifiées ne peuvent pas être restaurées automatiquement ; fermer puis rouvrir
   la fenêtre concernée suffit. La fermeture de session Windows, elle, est gérée.
+
+## Compilation (pour les développeurs)
+
+Le développement se fait sous Linux avec cross-compilation MinGW ; la cible par
+défaut est `x86_64-pc-windows-gnu` (voir `.cargo/config.toml`).
+
+```bash
+cargo check
+cargo build --release
+```
+
+L'exécutable est généré dans
+`target/x86_64-pc-windows-gnu/release/rustpiz.exe`.
 
 ## Licence
 

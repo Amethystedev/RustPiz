@@ -27,7 +27,7 @@ use windows::Win32::UI::WindowsAndMessaging::{
     LAYERED_WINDOW_ATTRIBUTES_FLAGS, LWA_ALPHA, WS_EX_LAYERED,
 };
 
-use crate::config::Config;
+use crate::config::{Config, Raccourcis};
 use crate::dwm::{self, EffetDwm};
 use crate::explorer;
 use crate::logging;
@@ -58,7 +58,7 @@ struct FenetreModifiee {
 pub struct EtatApp {
     /// Interrupteur général : si faux, les raccourcis sont ignorés.
     pub actif: bool,
-    /// Opacité globale par défaut (en %), modifiable via le menu.
+    /// Opacité globale par défaut (en %), modifiable via les paramètres.
     pub opacite: u8,
     /// Fenêtres actuellement modifiées : clé = valeur du HWND.
     fenetres: HashMap<isize, FenetreModifiee>,
@@ -528,7 +528,7 @@ pub fn ajuster_opacite_sous_curseur(delta: i16) {
 }
 
 /// Applique un effet DWM à la fenêtre sous le curseur
-/// (menu « Effet DWM », action différée de quelques secondes).
+/// (paramètres, liste « Effet DWM », action différée de 3 secondes).
 pub fn appliquer_effet_sous_curseur(effet: EffetDwm) {
     avec_etat(|etat| {
         if !etat.actif {
@@ -620,7 +620,7 @@ pub fn nettoyer_fenetres_traitees() {
     });
 }
 
-/// Interrupteur général (menu + double-clic sur l'icône).
+/// Interrupteur général (paramètres + double-clic sur l'icône).
 /// La désactivation restaure immédiatement toutes les fenêtres.
 pub fn basculer_activation() {
     avec_etat(|etat| {
@@ -639,14 +639,6 @@ pub fn basculer_activation() {
     });
 }
 
-/// Définit l'opacité globale par défaut (menu « Opacité globale »).
-pub fn definir_opacite(opacite: u8) {
-    avec_etat(|etat| {
-        etat.opacite = opacite.clamp(OPACITE_MIN, 100);
-        logging::info(&format!("Opacité globale : {} %.", etat.opacite));
-    });
-}
-
 /// Indique si la transparence est actuellement activée.
 pub fn est_actif() -> bool {
     let mut actif = false;
@@ -658,15 +650,14 @@ pub fn est_actif() -> bool {
     actif
 }
 
-/// Retourne l'opacité globale courante (en %).
-pub fn opacite_courante() -> u8 {
-    let mut opacite = 80;
-    ETAT.with(|cellule| {
-        if let Some(etat) = cellule.borrow().as_ref() {
-            opacite = etat.opacite;
-        }
-    });
-    opacite
+/// Raccourcis de la configuration en mémoire (ceux enregistrés au
+/// démarrage ou au dernier rechargement) : rétablis après une capture
+/// abandonnée dans la fenêtre de paramètres.
+pub fn raccourcis_actifs() -> Raccourcis {
+    ETAT.with(|cellule| match cellule.try_borrow() {
+        Ok(etat) => etat.as_ref().map(|e| e.config.raccourcis.clone()).unwrap_or_default(),
+        Err(_) => Raccourcis::default(),
+    })
 }
 
 /// Remplace la configuration en mémoire (après « Recharger la configuration »).
@@ -693,7 +684,7 @@ fn restaurer_toutes_interne(etat: &mut EtatApp) {
     }
 }
 
-/// « Restaurer toutes les fenêtres » : remet l'état d'origine partout.
+/// Remet l'état d'origine de toutes les fenêtres (arrêt, fin de session).
 pub fn restaurer_toutes() {
     avec_etat(restaurer_toutes_interne);
 }

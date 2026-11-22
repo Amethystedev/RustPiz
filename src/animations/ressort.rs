@@ -22,9 +22,6 @@
 use std::ops::{Add, AddAssign, Mul, Neg, Sub, SubAssign};
 use std::time::Duration;
 
-/// Paliers proposés dans le menu (en %).
-pub const PALIERS: [u8; 5] = [0, 25, 50, 75, 100];
-
 /// Raideur des sommets proches de la prise.
 const RAIDEUR_PROCHE: f32 = 2500.0;
 /// Raideur des sommets les plus éloignés : de 1200 (puissance faible) à 90
@@ -68,17 +65,6 @@ impl Puissance {
     /// Puissance nulle : aucun mouvement (l'effet n'est pas joué).
     pub fn est_nulle(self) -> bool {
         self.0 == 0
-    }
-
-    /// Palier du menu le plus proche (le plus bas en cas d'égalité).
-    pub fn palier_proche(self) -> u8 {
-        let mut meilleur = PALIERS[0];
-        for p in PALIERS {
-            if (p as i32 - self.0 as i32).abs() < (meilleur as i32 - self.0 as i32).abs() {
-                meilleur = p;
-            }
-        }
-        meilleur
     }
 
     /// Fraction `s = valeur / 100` (0,0 à 1,0).
@@ -459,14 +445,14 @@ mod tests {
     }
 
     #[test]
-    fn puissance_bornee_et_paliers() {
+    fn puissance_bornee_et_continue() {
         assert_eq!(Puissance::new(150).valeur(), 100);
-        assert_eq!(Puissance::new(60).palier_proche(), 50);
-        assert_eq!(Puissance::new(63).palier_proche(), 75);
-        assert_eq!(Puissance::new(0).palier_proche(), 0);
-        assert_eq!(Puissance::new(100).palier_proche(), 100);
-        assert_eq!(Puissance::new(12).palier_proche(), 0);
+        // Toute valeur 0-100 est honorée telle quelle (curseur au pas de 1).
+        assert_eq!(Puissance::new(63).valeur(), 63);
         assert!((Puissance::new(25).fraction() - 0.25).abs() < 1e-6);
+        assert!((Puissance::new(37).fraction() - 0.37).abs() < 1e-6);
+        assert!(!Puissance::new(1).est_nulle());
+        assert!(Puissance::new(0).est_nulle());
     }
 
     #[test]

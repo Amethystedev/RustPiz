@@ -302,10 +302,6 @@ impl EffetAnimation {
     }
 }
 
-// Identifiants de menu : CMD_ANIM_BASE (1300) + index < CMD_JELLY_PUISSANCE_BASE
-// (1400) dans `tray.rs`.
-const _: () = assert!(EffetAnimation::TOUS.len() < 100);
-
 #[cfg(test)]
 mod tests {
     use super::*;
