@@ -66,8 +66,6 @@ Un **clic droit** sur l'icône ouvre un menu à trois entrées :
 Un **double-clic** sur l'icône active / désactive la transparence (interrupteur
 général ; la désactivation restaure toutes les fenêtres).
 
-<!-- Capture d'écran à ajouter : le menu du clic droit sur l'icône -->
-
 ### La fenêtre de paramètres
 
 La fenêtre compte **trois onglets**, un par grande fonctionnalité. À son
@@ -77,8 +75,6 @@ ouverture, elle relit `config.toml` pour pré-remplir tous les réglages.
 - **Fermer** (ou `Echap`, ou la croix) ferme la fenêtre **sans rien enregistrer**.
 
 Navigation au clavier : `Tab` passe au contrôle suivant, `Echap` ferme.
-
-<!-- Capture d'écran à ajouter : la fenêtre de paramètres (vue d'ensemble) -->
 
 ### Raccourcis clavier
 
