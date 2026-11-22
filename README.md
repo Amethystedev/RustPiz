@@ -22,6 +22,14 @@ paramètres native** et des **raccourcis clavier globaux**.
 - Conçu pour Windows 11 (build ≥ 22000, vérifié avec 26H2), x64.
 - Aucune injection dans les autres processus.
 
+<p align="center">
+  <a href="https://github.com/Amethystedev/RustPiz/releases/download/v0.5.0/demo_RustPiz.mp4">
+    <img src="docs/captures/demo-apercu.jpg" alt="Vidéo de démonstration de RustPiz" width="720">
+  </a>
+  <br>
+  <em>▶ Cliquez pour voir la vidéo de démonstration (Transparence, Jelly, effets d'ouverture et de fermeture)</em>
+</p>
+
 ## Sommaire
 
 1. [Installation](#installation)
@@ -102,7 +110,6 @@ fermeture de l'application.
 <p align="center">
   <img src="docs/captures/parametres-transparence.png" alt="Onglet Param Transparence" width="480">
 </p>
-<!-- Vidéo à ajouter : une fenêtre qui devient transparente, puis effets Mica / Acrylique / Verre -->
 
 ### Onglet « Param Transparence »
 
@@ -148,7 +155,6 @@ un rebond amorti, façon [Jello](https://github.com/iamDecode/Jello) sur macOS.
 <p align="center">
   <img src="docs/captures/parametres-jelly.png" alt="Onglet Param Jelly" width="480">
 </p>
-<!-- Vidéo à ajouter : une fenêtre qu'on déplace avec l'effet Jelly -->
 
 ### Onglet « Param Jelly »
 
@@ -185,7 +191,6 @@ jouée à l'envers).
 <p align="center">
   <img src="docs/captures/parametres-effets.png" alt="Onglet Param Effets Ouverture/Fermeture avec la liste des effets" width="480">
 </p>
-<!-- Vidéo à ajouter : ouverture et fermeture de fenêtres avec différents effets -->
 
 ### Onglet « Param Effets Ouverture/Fermeture »
 
