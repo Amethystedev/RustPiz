@@ -103,7 +103,9 @@ Rend les fenêtres plus ou moins transparentes (`WS_EX_LAYERED` +
 d'origine de chaque fenêtre est restauré exactement à la désactivation et à la
 fermeture de l'application.
 
-<!-- Capture d'écran à ajouter : onglet « Param Transparence » -->
+<p align="center">
+  <img src="docs/captures/parametres-transparence.png" alt="Onglet Param Transparence" width="480">
+</p>
 <!-- Vidéo à ajouter : une fenêtre qui devient transparente, puis effets Mica / Acrylique / Verre -->
 
 ### Onglet « Param Transparence »
@@ -147,7 +149,9 @@ Quand on **déplace une fenêtre** en glissant sa barre de titre, elle se défor
 élastiquement (traînée proportionnelle à la vitesse) puis revient à sa forme avec
 un rebond amorti, façon [Jello](https://github.com/iamDecode/Jello) sur macOS.
 
-<!-- Capture d'écran à ajouter : onglet « Param Jelly » -->
+<p align="center">
+  <img src="docs/captures/parametres-jelly.png" alt="Onglet Param Jelly" width="480">
+</p>
 <!-- Vidéo à ajouter : une fenêtre qu'on déplace avec l'effet Jelly -->
 
 ### Onglet « Param Jelly »
@@ -182,7 +186,9 @@ Les fenêtres des autres applications peuvent être animées à l'ouverture et �
 fermeture, avec le même effet dans les deux sens (l'ouverture est la fermeture
 jouée à l'envers).
 
-<!-- Capture d'écran à ajouter : onglet « Param Effets Ouverture/Fermeture » -->
+<p align="center">
+  <img src="docs/captures/parametres-effets.png" alt="Onglet Param Effets Ouverture/Fermeture avec la liste des effets" width="480">
+</p>
 <!-- Vidéo à ajouter : ouverture et fermeture de fenêtres avec différents effets -->
 
 ### Onglet « Param Effets Ouverture/Fermeture »
