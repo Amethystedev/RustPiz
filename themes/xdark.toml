@@ -1,0 +1,138 @@
+schema = 1
+
+[meta]
+name = "xdark"
+author = "xscriptor"
+source = "https://github.com/ramensoftware/windows-11-taskbar-styling-guide/tree/main/Themes/xdark"
+
+[[control_styles]]
+target = "Taskbar.TaskListButton"
+styles = [
+    "CornerRadius=13",
+    "Padding=6,0,6,0",
+    "HorizontalContentAlignment=Left",
+]
+
+[[control_styles]]
+target = "SystemTray.TextIconContent > Grid#ContainerGrid > SystemTray.AdaptiveTextBlock#Base > TextBlock#InnerTextBlock"
+styles = [
+    "FontSize=16",
+    "Foreground=#facc15",
+]
+
+[[control_styles]]
+target = "SystemTray.NotifyIconView#NotifyItemIcon"
+styles = [
+    "MinWidth=25",
+]
+
+[[control_styles]]
+target = "SystemTray.OmniButton#ControlCenterButton > Grid > ContentPresenter > ItemsPresenter > StackPanel > ContentPresenter[1] > SystemTray.IconView > Grid > Grid"
+styles = [
+    "Visibility=Collapsed",
+]
+
+[[control_styles]]
+target = "SystemTray.TextIconContent > Grid#ContainerGrid"
+styles = [
+    "Padding=2",
+]
+
+[[control_styles]]
+target = "SystemTray.ChevronIconView"
+styles = [
+    "MinWidth=27",
+]
+
+[[control_styles]]
+target = "SystemTray.OmniButton#NotificationCenterButton > Grid > ContentPresenter > ItemsPresenter > StackPanel > ContentPresenter > SystemTray.IconView#SystemTrayIcon > Grid > Grid > SystemTray.TextIconContent"
+styles = [
+    "Visibility=Collapsed",
+]
+
+[[control_styles]]
+target = "Grid#IconPanel > Border#BackgroundElement, Taskbar.TaskListLabeledButtonPanel > Border#BackgroundElement"
+styles = [
+    "Background=#000000",
+]
+
+[[control_styles]]
+target = "StackPanel#SystemTrayFrameGrid, Grid#SystemTrayFrameGrid"
+styles = [
+    "Background=#000000",
+    "CornerRadius=13",
+    "Margin=0,5,4,5",
+    "Padding=2,0,-6,0",
+]
+
+[[control_styles]]
+target = "SystemTray.Stack#ShowDesktopStack"
+styles = [
+    "Visibility=Collapsed",
+]
+
+[[control_styles]]
+target = "Taskbar.TaskListButton > Grid > Rectangle#RunningIndicator"
+styles = [
+    "Height=3",
+    "RadiusX=1.5",
+    "RadiusY=1.5",
+    "Fill@ActiveNormal=#facc15",
+    "VerticalAlignment=Bottom",
+    "Margin=16,0,16,4",
+    "StrokeThickness=0",
+]
+
+[[control_styles]]
+target = "SystemTray.ImageIconContent > Grid#ContainerGrid > Image"
+styles = [
+    "Width=13",
+]
+
+[[control_styles]]
+target = "SystemTray.TextIconContent > Grid#ContainerGrid > SystemTray.AdaptiveTextBlock#Base > TextBlock#InnerTextBlock"
+styles = [
+    "FontSize=13",
+    "Foreground=#facc15",
+]
+
+[[control_styles]]
+target = "TextBlock#LabelControl"
+styles = [
+    "FontFamily=Segoe UI Medium",
+    "Foreground=#facc15",
+    "Margin=1,0,0,0",
+    "VerticalAlignment=Center",
+    "TextWrapping=NoWrap",
+]
+
+[[control_styles]]
+target = "Taskbar.ExperienceToggleButton#LaunchListButton[AutomationProperties.AutomationId=StartButton]"
+styles = [
+    "Visibility=Visible",
+]
+
+[[control_styles]]
+target = "TextBlock#InnerTextBlock[Text=], TextBlock#InnerTextBlock[Text=]"
+styles = [
+    "Text=",
+    "Foreground=#facc15",
+]
+
+[[control_styles]]
+target = "Taskbar.TaskbarFrame > Grid#RootGrid > Taskbar.TaskbarBackground > Grid > Rectangle#BackgroundFill"
+styles = [
+    "Fill=Transparent",
+]
+
+[[control_styles]]
+target = "Rectangle#BackgroundStroke"
+styles = [
+    "Fill=Transparent",
+]
+
+[[control_styles]]
+target = "SystemTray.TextIconContent > Grid#ContainerGrid > SystemTray.AdaptiveTextBlock#Base > TextBlock#InnerTextBlock"
+styles = [
+    "Foreground=#facc15",
+]

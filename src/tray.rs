@@ -14,6 +14,7 @@
 //! - la fermeture de session (`WM_QUERYENDSESSION` / `WM_ENDSESSION`).
 
 use std::cell::{Cell, RefCell};
+use std::sync::atomic::{AtomicIsize, Ordering};
 
 use windows::core::{w, PCWSTR};
 use windows::Win32::Foundation::{HINSTANCE, HWND, LPARAM, LRESULT, POINT, WPARAM};
@@ -71,6 +72,12 @@ enum ActionDifferee {
     /// fenêtre de paramètres).
     Effet(EffetDwm),
 }
+
+/// Handle de la fenêtre de message, accessible depuis d'autres fils (par
+/// exemple le fil dédié de l'intégration de la barre des tâches) pour
+/// afficher une notification. `Shell_NotifyIconW(NIM_MODIFY)` peut être
+/// appelé depuis un autre fil que celui de la boucle de messages.
+static FENETRE_GLOBALE: AtomicIsize = AtomicIsize::new(0);
 
 thread_local! {
     /// Handle de la fenêtre de message (pour y revenir depuis les modules).
@@ -167,6 +174,7 @@ pub unsafe fn creer_fenetre_message() -> windows::core::Result<HWND> {
         None,
     )?;
     FENETRE_MSG.with(|c| c.set(hwnd.0 as isize));
+    FENETRE_GLOBALE.store(hwnd.0 as isize, Ordering::Relaxed);
     Ok(hwnd)
 }
 
@@ -247,8 +255,22 @@ pub fn notifier(texte: &str) {
     }
 }
 
+/// Affiche une notification depuis un fil autre que la boucle de messages
+/// (le handle de fenêtre est lu dans un atomique partagé). Sans effet si la
+/// fenêtre n'existe pas encore.
+pub fn notifier_arriere_plan(texte: &str) {
+    let brut = FENETRE_GLOBALE.load(Ordering::Relaxed);
+    if brut != 0 {
+        unsafe {
+            afficher_notification(HWND(brut as *mut core::ffi::c_void), "RustPiz", texte);
+        }
+    }
+}
+
 /// Retire l'icône de la zone de notification.
 pub unsafe fn retirer_icone(hwnd: HWND) {
+    // Plus aucune notification depuis le fil de la barre après ce point.
+    FENETRE_GLOBALE.store(0, Ordering::Relaxed);
     let donnees = donnees_icone(hwnd);
     let _ = Shell_NotifyIconW(NIM_DELETE, &donnees);
     if !donnees.hIcon.0.is_null() {
@@ -281,6 +303,9 @@ pub fn recharger_configuration() {
             hotkey::enregistrer(hwnd, &nouvelle.raccourcis);
         }
         animations::appliquer_config(&nouvelle);
+        // Intégration de la barre des tâches (v0.6.0) : n'agit que sur
+        // changement, dans son propre fil (jamais bloquant).
+        crate::barre::appliquer(&nouvelle);
         window::remplacer_config(nouvelle);
     }
 }
@@ -449,6 +474,9 @@ unsafe extern "system" fn procedure_fenetre(
             LRESULT(0)
         }
         // Fermeture de session Windows : on restaure tout avant de partir.
+        // La barre des tâches n'est arrêtée qu'à la fin de session CONFIRMÉE
+        // (`WM_ENDSESSION`, wParam non nul) : la fermeture peut encore être
+        // annulée ici, et l'arrêt de la barre est définitif pour le processus.
         WM_QUERYENDSESSION => {
             animations::arreter();
             window::restaurer_toutes();
@@ -458,6 +486,7 @@ unsafe extern "system" fn procedure_fenetre(
             if wparam.0 != 0 {
                 animations::arreter();
                 window::restaurer_toutes();
+                crate::barre::arreter(crate::barre::ModeArret::FinSession);
                 retirer_icone(hwnd);
             } else {
                 // Fermeture de session annulée : on réactive les animations.

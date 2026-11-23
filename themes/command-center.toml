@@ -1,0 +1,444 @@
+schema = 1
+style_constants = [
+    "Translucent=<WindhawkBlur BlurAmount=\"15\" TintColor=\"#10808080\"/>",
+    "Glass=<WindhawkBlur BlurAmount=\"5\" TintColor=\"{ThemeResource SystemChromeMediumColor}\" TintOpacity=\"0.7\" />",
+    "Frosted=<WindhawkBlur BlurAmount=\"20\" TintColor=\"{ThemeResource SystemChromeMediumColor}\" TintOpacity=\"0.7\" />",
+    "Acrylic=<WindhawkBlur BlurAmount=\"30\" TintColor=\"{ThemeResource SystemChromeMediumColor}\" TintOpacity=\"0.8\" />",
+    "Background=$Frosted",
+    "OverlayColor=<AcrylicBrush TintColor=\"{ThemeResource SystemAltLowColor}\" TintOpacity=\"1\" TintLuminosityOpacity=\"0.8\" FallbackColor=\"{ThemeResource CardStrokeColorDefaultSolid}\" />",
+    "OverlayColor2=<AcrylicBrush TintColor=\"{ThemeResource SystemAltLowColor}\" TintOpacity=\"1\" TintLuminosityOpacity=\"0.5\" FallbackColor=\"{ThemeResource CardStrokeColorDefaultSolid}\" />",
+    "AccentColor=<AcrylicBrush TintColor=\"{ThemeResource SystemAccentColor}\" TintOpacity=\"1\" TintLuminosityOpacity=\"0.5\" FallbackColor=\"{ThemeResource CardStrokeColorDefaultSolid}\" />",
+    "ActiveColor=<AcrylicBrush TintColor=\"{ThemeResource SystemAltLowColor}\" TintOpacity=\"1\" TintLuminosityOpacity=\"1\" FallbackColor=\"{ThemeResource CardStrokeColorDefaultSolid}\" />",
+    "BorderBrush=<LinearGradientBrush StartPoint=\"0,0\" EndPoint=\"0,1\"><GradientStop Color=\"#60808080\" Offset=\"0.0\" /><GradientStop Color=\"#50404040\" Offset=\"0.25\" /><GradientStop Color=\"#40808080\" Offset=\"1\" /></LinearGradientBrush>",
+    "BorderThickness=0.3,1,0.3,1",
+    "R1=6",
+    "R2=20",
+    "Height=42",
+    "Width=42",
+]
+
+[meta]
+name = "Command Center"
+author = "PhantomNimbi"
+source = "https://github.com/ramensoftware/windows-11-taskbar-styling-guide/tree/main/Themes/Command%20Center"
+
+[[control_styles]]
+target = "Taskbar.TaskbarFrame > Grid#RootGrid > Taskbar.TaskbarBackground > Grid > Rectangle#BackgroundFill"
+styles = [
+    "Visibility=1",
+]
+
+[[control_styles]]
+target = "Rectangle#BackgroundStroke"
+styles = [
+    "Visibility=1",
+]
+
+[[control_styles]]
+target = "Taskbar.TaskbarBackground#HoverFlyoutBackgroundControl"
+styles = [
+    "Background:=$Background",
+    "BorderBrush:=$BorderBrush",
+    "BorderThickness=$BorderThickness",
+    "CornerRadius=$R1",
+]
+
+[[control_styles]]
+target = "Taskbar.TaskListButtonPanel@CommonStates > Grid > Border#BackgroundElement, Taskbar.TaskListButtonPanel@CommonStates > Border#BackgroundElement"
+styles = [
+    "Padding=6",
+    "Margin=2",
+    "Background@ActiveNormal:=$ActiveColor",
+    "Background@ActivePointerOver:=$OverlayColor",
+    "Background@ActivePressed:=$OverlayColor",
+    "Background@InactiveNormal:=$Background",
+    "Background@InactivePointerOver:=$OverlayColor2",
+    "Background@InactivePressed:=$OverlayColor",
+    "Background@MultiWindowNormal:=$Background",
+    "Background@MultiWindowPointerOver:=$OverlayColor2",
+    "Background@MultiWindowActive:=$ActiveColor",
+    "Background@MultiWindowPressed:=$OverlayColor",
+    "CornerRadius=$R1",
+]
+
+[[control_styles]]
+target = "SearchUx.SearchUI.SearchIconButton > SearchUx.SearchUI.SearchButtonRootGrid#SearchBoxButtonRootPanel"
+styles = [
+    "Background:=$Background",
+    "BorderBrush:=$BorderBrush",
+    "BorderThickness=$BorderThickness",
+    "CornerRadius=$R1",
+    "Width=$Width",
+    "Height=$Height",
+]
+
+[[control_styles]]
+target = "SearchUx.SearchUI.SearchIconButton > SearchUx.SearchUI.SearchButtonRootGrid#SearchBoxButtonRootPanel > Grid > Border#BackgroundElement, SearchUx.SearchUI.SearchIconButton > SearchUx.SearchUI.SearchButtonRootGrid#SearchBoxButtonRootPanel > Border#BackgroundElement"
+styles = [
+    "Visibility=1",
+]
+
+[[control_styles]]
+target = "Grid#IconPanel@CommonStates > Border#BackgroundElement, Taskbar.TaskListLabeledButtonPanel@CommonStates > Border#BackgroundElement"
+styles = [
+    "Height=$Height",
+    "Background@ActiveNormal:=$ActiveColor",
+    "Background@ActivePointerOver:=$OverlayColor",
+    "Background@ActivePressed:=$OverlayColor",
+    "Background@InactiveNormal:=$Background",
+    "Background@InactivePointerOver:=$OverlayColor2",
+    "Background@InactivePressed:=$OverlayColor",
+    "Background@MultiWindowNormal:=$Background",
+    "Background@MultiWindowPointerOver:=$OverlayColor2",
+    "Background@MultiWindowActive:=$ActiveColor",
+    "Background@MultiWindowPressed:=$OverlayColor",
+    "Margin@MultiWindowNormal=0",
+    "Margin@MultiWindowPointerOver=0",
+    "Margin@MultiWindowPressed=0",
+    "CornerRadius=$R1",
+]
+
+[[control_styles]]
+target = "Grid#IconPanel@RunningIndicatorStates > Rectangle#RunningIndicator, Taskbar.TaskListLabeledButtonPanel@RunningIndicatorStates > Rectangle#RunningIndicator"
+styles = [
+    "RadiusX=1.5",
+    "RadiusY=1.5",
+    "Height=4",
+    "Width=12",
+    "Fill:=$ActiveColor",
+    "Fill@ActiveRunningIndicator:=$AccentColor",
+    "Width@ActiveRunningIndicator=21",
+]
+
+[[control_styles]]
+target = "StackPanel#SystemTrayFrameGrid, Grid#SystemTrayFrameGrid"
+styles = [
+    "Height=$Height",
+    "Background:=Transparent",
+    "BorderBrush:=Transparent",
+    "BorderThickness=0",
+    "Shadow:=",
+]
+
+[[control_styles]]
+target = "Grid#OverflowRootGrid > Border"
+styles = [
+    "Padding=6",
+    "Background:=Transparent",
+    "BorderBrush:=Transparent",
+    "BorderThickness=0",
+    "Shadow:=",
+]
+
+[[control_styles]]
+target = "Windows.UI.Xaml.Shapes.Rectangle#HorizontalTrackRect"
+styles = [
+    "Height=8",
+    "Margin=0",
+    "Fill:=$Background",
+]
+
+[[control_styles]]
+target = "Windows.UI.Xaml.Shapes.Rectangle#HorizontalDecreaseRect"
+styles = [
+    "Height=8",
+    "Fill:=$AccentColor",
+]
+
+[[control_styles]]
+target = "Windows.UI.Xaml.Controls.TextBlock#volumeLevelText"
+styles = [
+    "Margin=0,-2,0,0",
+]
+
+[[control_styles]]
+target = "Windows.UI.Xaml.Controls.Grid#VolumeConfirmator"
+styles = [
+    "Padding=8,0,3,0",
+    "CornerRadius=$R2",
+]
+
+[[control_styles]]
+target = "Windows.UI.Xaml.Controls.Grid#ConfirmatorMainGrid"
+styles = [
+    "Background:=Transparent",
+    "BorderBrush:=Transparent",
+    "BorderThickness=0",
+    "Shadow:=",
+]
+
+[[control_styles]]
+target = "Windows.UI.Xaml.Controls.Grid#BrightnessConfirmator"
+styles = [
+    "Padding=25,0,17,0",
+    "CornerRadius=$R2",
+]
+
+[[control_styles]]
+target = "Microsoft.UI.Xaml.Controls.AnimatedIcon#BrightnessIcon"
+styles = [
+    "Margin=0,-1,12,0",
+]
+
+[[control_styles]]
+target = "Microsoft.UI.Xaml.Controls.ProgressBar#ProgressIndicator"
+styles = [
+    "Margin=0,0,0,1",
+]
+
+[[control_styles]]
+target = "Windows.UI.Xaml.Shapes.Rectangle#ProgressBarTrack"
+styles = [
+    "Fill:=$OverlayColor",
+    "RadiusX=1.5",
+    "RadiusY=1.5",
+]
+
+[[control_styles]]
+target = "Windows.UI.Xaml.Shapes.Rectangle#DeterminateProgressBarIndicator"
+styles = [
+    "Fill:=<SolidColorBrush Color=\"{ThemeResource SystemAccentColor}\"/>",
+]
+
+[[control_styles]]
+target = "Taskbar.TaskListButton#TaskListButton > Grid#IconPanel > Microsoft.UI.Xaml.Controls.ProgressBar#ProgressIndicator, Taskbar.TaskListButton#TaskListButton > Taskbar.TaskListLabeledButtonPanel#IconPanel > Microsoft.UI.Xaml.Controls.ProgressBar#ProgressIndicator"
+styles = [
+    "MinHeight=4",
+    "Width=26",
+]
+
+[[control_styles]]
+target = "Windows.UI.Xaml.Controls.ContentPresenter#ContentPresenter"
+styles = [
+    "Padding=6",
+    "Margin=2",
+    "BorderThickness=$BorderThickness",
+    "BorderBrush:=$BorderBrush",
+    "Background:=$Background",
+    "CornerRadius=$R1",
+    "Shadow:=",
+]
+
+[[control_styles]]
+target = "SystemTray.NotifyIconView > Grid#ContainerGrid > ContentPresenter#ContentPresenter"
+styles = [
+    "Padding=6,4",
+]
+
+[[control_styles]]
+target = "SystemTray.ChevronIconView > Grid#ContainerGrid"
+styles = [
+    "Margin=2",
+]
+
+[[control_styles]]
+target = "SystemTray.ChevronIconView > Grid#ContainerGrid > ContentPresenter#ContentPresenter"
+styles = [
+    "Margin=0",
+]
+
+[[control_styles]]
+target = "Taskbar.Badge#BadgeControl"
+styles = [
+    "Height=14",
+    "MinWidth=14",
+    "Margin=0,0,0,0",
+    "CornerRadius=$R2",
+]
+
+[[control_styles]]
+target = "Taskbar.Badge > Grid > Windows.UI.Xaml.Shapes.Rectangle#BackgroundRect"
+styles = [
+    "RadiusX=4",
+    "RadiusY=4",
+]
+
+[[control_styles]]
+target = "MenuFlyoutPresenter > Border"
+styles = [
+    "Background:=$Background",
+    "BorderBrush:=$BorderBrush",
+    "BorderThickness=$BorderThickness",
+    "CornerRadius=$R1",
+]
+
+[[control_styles]]
+target = "MenuFlyoutSubItem"
+styles = [
+    "Background:=$Background",
+    "BorderBrush:=$BorderBrush",
+    "BorderThickness=$BorderThickness",
+    "CornerRadius=$R1",
+]
+
+[[control_styles]]
+target = "Grid#HoverFlyoutGrid > Border#HoverFlyoutBackground"
+styles = [
+    "Background:=$Background",
+    "BorderBrush:=$BorderBrush",
+    "BorderThickness=$BorderThickness",
+    "CornerRadius=$R1",
+]
+
+[[control_styles]]
+target = "Taskbar.TaskbarExtensionElement"
+styles = [
+    "RenderTransform:=<TranslateTransform X=\"0\" Y=\"0\" />",
+]
+
+[[control_styles]]
+target = "Windows.UI.Xaml.Controls.Border#SnapBarBorder"
+styles = [
+    "Background:=$Background",
+    "BorderBrush:=$BorderBrush",
+    "CornerRadius=$R1",
+    "BorderThickness=$BorderThickness",
+]
+
+[[control_styles]]
+target = "Windows.UI.Xaml.Controls.Border#SnapPickerBorder"
+styles = [
+    "Background:=$Background",
+    "BorderBrush:=$BorderBrush",
+    "CornerRadius=$R1",
+    "BorderThickness=$BorderThickness",
+]
+
+[[control_styles]]
+target = "SystemTray.DateTimeIconContent"
+styles = [
+    "FontSize=9",
+]
+
+[[control_styles]]
+target = "TextBlock#DateInnerTextBlock"
+styles = [
+    "Visibility=1",
+]
+
+[[control_styles]]
+target = "Border#VirtualDesktopBarBackground"
+styles = [
+    "Background:=$Background",
+    "BorderThickness=$BorderThickness",
+    "BorderBrush:=$BorderBrush",
+    "CornerRadius=$R1",
+]
+
+[[control_styles]]
+target = "WindowsInternal.ComposableShell.Experiences.Switcher.VirtualDesktopElementThemed"
+styles = [
+    "CornerRadius=$R1",
+]
+
+[[control_styles]]
+target = "WindowsInternal.ComposableShell.Experiences.Switcher.NewVirtualDesktopElementThemed"
+styles = [
+    "CornerRadius=$R1",
+]
+
+[[control_styles]]
+target = "SnapLayout.SnapLayoutPickerControl"
+styles = [
+    "Background:=$Background",
+    "BorderThickness=$BorderThickness",
+    "BorderBrush:=$BorderBrush",
+    "CornerRadius=$R1",
+]
+
+[[control_styles]]
+target = "SnapLayout.SnapLayoutControl"
+styles = [
+    "Background:=$Background",
+    "BorderThickness=$BorderThickness",
+    "BorderBrush:=$BorderBrush",
+    "CornerRadius=$R1",
+]
+
+[[control_styles]]
+target = "SnapLayout.SnapLayoutControl@CommonStates > Windows.UI.Xaml.Controls.Border#LayoutBorder"
+styles = [
+    "Background@PointerOver:=$AccentColor",
+    "Background@Pressed:=$Background",
+]
+
+[[control_styles]]
+target = "Grid#ConfirmatorMainGrid"
+styles = [
+    "Background:=$Background",
+    "BorderThickness=$BorderThickness",
+    "BorderBrush:=$BorderBrush",
+    "CornerRadius=$R1",
+    "Height=20",
+]
+
+[[control_styles]]
+target = "SearchUx.SearchUI.SearchButtonRootGrid#SearchBoxButtonRootPanel"
+styles = [
+    "Background:=$Background",
+    "BorderThickness=$BorderThickness",
+    "BorderBrush:=$BorderBrush",
+    "CornerRadius=$R1",
+    "Margin=0,6",
+]
+
+[[control_styles]]
+target = "SearchUx.SearchUI.SearchButtonRootGrid#SearchBoxButtonRootPanel > Grid > Border#BackgroundElement, SearchUx.SearchUI.SearchButtonRootGrid#SearchBoxButtonRootPanel > Border#BackgroundElement"
+styles = [
+    "Background:=Transparent",
+    "BorderBrush:=Transparent",
+    "BorderThickness=0",
+    "CornerRadius=$R1",
+    "Margin=4,-5,6,-5",
+]
+
+[[control_styles]]
+target = "Taskbar.TaskListButtonPanel#ExperienceToggleButtonRootPanel"
+styles = [
+    "RenderTransform:=<TranslateTransform X=\"0\" Y=\"0\" />",
+]
+
+[[control_styles]]
+target = "SearchUx.SearchUI.SearchPillButton#SearchPill > SearchUx.SearchUI.SearchButtonRootGrid#SearchBoxButtonRootPanel"
+styles = [
+    "BorderBrush:=Transparent",
+    "BorderThickness=0",
+    "CornerRadius=$R1",
+    "MaxWidth=150",
+    "MaxHeight=$Height",
+    "Width=Auto",
+    "Height=Auto",
+]
+
+[[control_styles]]
+target = "SearchUx.SearchUI.SearchButtonRootGrid#SearchBoxButtonRootPanel > Grid > Border#SearchPillBackgroundElement, SearchUx.SearchUI.SearchButtonRootGrid#SearchBoxButtonRootPanel > Border#SearchPillBackgroundElement"
+styles = [
+    "BorderBrush:=$BorderBrush",
+    "CornerRadius=$R1",
+    "BorderThickness=$BorderThickness",
+    "MaxWidth=150",
+    "MaxHeight=$Height",
+    "Width=Auto",
+    "Height=Auto",
+    "Margin=-4,-5,-6,-5",
+]
+
+[[control_styles]]
+target = "Button#GleamEntryPointButton > Border > ContentPresenter#ContentPresenter"
+styles = [
+    "Background:=Transparent",
+    "BorderBrush:=Transparent",
+    "BorderThickness=0",
+]
+
+[[control_styles]]
+target = "Grid#DynamicSearchBoxGleamContainer"
+styles = [
+    "Visibility=1",
+]
+
+[[control_styles]]
+target = "TextBlock#InnerTextBlock[Text=], TextBlock#InnerTextBlock[Text=]"
+styles = [
+    "Text=",
+]

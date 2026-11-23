@@ -1,0 +1,80 @@
+schema = 1
+style_constants = [
+    "GhostBarBackgroundColor=#66000000",
+    "IslandBackgroundColor={ThemeResource ControlFillColorDefault}",
+    "IslandVerticalMargin=3",
+    "IslandHorizontalMargin=5",
+    "TaskbarFrameMaxWidth=8000",
+]
+
+[meta]
+name = "UltraWideFriendly"
+author = "CryptoProgenitor"
+source = "https://github.com/ramensoftware/windows-11-taskbar-styling-guide/tree/main/Themes/UltraWideFriendly"
+
+[[control_styles]]
+target = ":root > ScrollViewer > ScrollContentPresenter > Border > Grid"
+styles = [
+    "ColumnDefinitions:=<ColumnDefinitionCollection><ColumnDefinition Width=\"*\"/><ColumnDefinition Width=\"Auto\"/><ColumnDefinition Width=\"Auto\"/><ColumnDefinition Width=\"*\"/></ColumnDefinitionCollection>",
+    "HorizontalAlignment=Stretch",
+    "Background:=<SolidColorBrush Color=\"$GhostBarBackgroundColor\"/>",
+    "ActualWidth=>containerGridWidth",
+]
+
+[[control_styles]]
+target = "Taskbar.TaskbarFrame > Grid#RootGrid@DockingStates"
+styles = [
+    "Tag=horizontal",
+    "Tag@DockedLeft=vertical",
+    "Tag@DockedRight=vertical",
+    "Tag=>taskbarDock",
+]
+
+[[control_styles]]
+target = "Taskbar.TaskbarFrame"
+styles = [
+    "Grid.Column=1",
+    "Width={{taskbarDock==`vertical`?skip():`Auto`}}",
+    "HorizontalAlignment=Right",
+    "Margin=0,0,$IslandHorizontalMargin,0",
+    "MaxWidth={{containerGridWidth>0?min($TaskbarFrameMaxWidth,containerGridWidth):$TaskbarFrameMaxWidth}}",
+]
+
+[[control_styles]]
+target = "Taskbar.TaskbarFrame > Grid"
+styles = [
+    "Background:=<SolidColorBrush Color=\"$IslandBackgroundColor\"/>",
+    "CornerRadius=10",
+    "Padding=25,0,25,0",
+    "Margin=0,$IslandVerticalMargin,0,$IslandVerticalMargin",
+]
+
+[[control_styles]]
+target = "SystemTray.SystemTrayFrame"
+styles = [
+    "Grid.Column=2",
+    "Width=Auto",
+    "HorizontalAlignment=Left",
+    "Margin=$IslandHorizontalMargin,0,0,0",
+]
+
+[[control_styles]]
+target = "StackPanel#SystemTrayFrameGrid, Grid#SystemTrayFrameGrid"
+styles = [
+    "Background:=<SolidColorBrush Color=\"$IslandBackgroundColor\"/>",
+    "CornerRadius=10",
+    "Padding=5,0,5,0",
+    "Margin=0,$IslandVerticalMargin,0,$IslandVerticalMargin",
+]
+
+[[control_styles]]
+target = "Taskbar.TaskbarBackground#BackgroundControl"
+styles = [
+    "Visibility=Collapsed",
+]
+
+[[control_styles]]
+target = "Taskbar.TaskbarFrame > Grid#RootGrid > Taskbar.TaskbarBackground > Grid > Rectangle#BackgroundFill"
+styles = [
+    "Fill=Transparent",
+]

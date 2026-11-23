@@ -1,0 +1,41 @@
+[package]
+name = "rustpiz-runtime"
+description = "XAML diagnostics TAP loaded into explorer.exe"
+version.workspace = true
+edition.workspace = true
+license = "GPL-3.0-only"
+
+[lib]
+name = "rustpiz_runtime"
+crate-type = ["cdylib"]
+
+[target.'cfg(windows)'.dependencies]
+rustpiz-protocol.workspace = true
+rustpiz-theme.workspace = true
+rustpiz-thumbnails.workspace = true
+rustpiz-xaml.workspace = true
+serde_json.workspace = true
+windows-core.workspace = true
+windows-collections.workspace = true
+windows-future.workspace = true
+windows-link.workspace = true
+windows-numerics.workspace = true
+iced-x86 = { version = "1.21", default-features = false, features = ["std", "decoder", "block_encoder", "instr_info"] }
+windows = { version = "0.62", features = [
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_Security_Authorization",
+    "Win32_Storage_FileSystem",
+    "Win32_System_Com",
+    "Win32_System_Diagnostics_Debug",
+    "Win32_System_Diagnostics_ToolHelp",
+    "Win32_System_IO",
+    "Win32_System_Kernel",
+    "Win32_System_LibraryLoader",
+    "Win32_System_Memory",
+    "Win32_System_Pipes",
+    "Win32_System_Registry",
+    "Win32_System_SystemServices",
+    "Win32_System_Threading",
+    "Win32_UI_WindowsAndMessaging",
+] }

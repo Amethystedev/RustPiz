@@ -1,6 +1,6 @@
 //! Sources HLSL des effets à shader (module pur : chaînes ASCII uniquement).
 //!
-//! Shaders écrits pour RustPiz (licence MIT) d'après la description
+//! Shaders écrits pour RustPiz (licence GPL-3.0-only du projet) d'après la description
 //! visuelle des effets ; aucun code d'un autre projet n'est repris.
 //!
 //! Organisation (voir [`effets_shader`](super::effets_shader)) :

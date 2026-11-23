@@ -1,0 +1,65 @@
+schema = 1
+style_constants = [
+    "CommonBgBrush=<WindhawkBlur BlurAmount=\"18\" TintColor=\"#25323232\"/>",
+]
+
+[meta]
+name = "TranslucentTaskbar"
+author = "Undisputed00x"
+source = "https://github.com/ramensoftware/windows-11-taskbar-styling-guide/tree/main/Themes/TranslucentTaskbar"
+
+[[control_styles]]
+target = "Taskbar.TaskbarFrame > Grid#RootGrid > Taskbar.TaskbarBackground > Grid > Rectangle#BackgroundFill"
+styles = [
+    "Fill:=$CommonBgBrush",
+]
+
+[[control_styles]]
+target = "Taskbar.TaskbarBackground#HoverFlyoutBackgroundControl > Grid > Rectangle#BackgroundFill"
+styles = [
+    "Fill:=$CommonBgBrush",
+]
+
+[[control_styles]]
+target = "Rectangle#BackgroundStroke"
+styles = [
+    "Visibility=Collapsed",
+]
+
+[[control_styles]]
+target = "MenuFlyoutPresenter > Border"
+styles = [
+    "Background:=$CommonBgBrush",
+    "BorderThickness=0,0,0,0",
+    "CornerRadius=14",
+    "Padding=3,4,3,4",
+]
+
+[[control_styles]]
+target = "Border#OverflowFlyoutBackgroundBorder"
+styles = [
+    "Background:=$CommonBgBrush",
+    "BorderThickness=0,0,0,0",
+    "CornerRadius=15",
+    "Margin=-2,-2,-2,-2",
+]
+
+[[control_styles]]
+target = "Grid#ConfirmatorMainGrid"
+styles = [
+    "Background:=$CommonBgBrush",
+    "BorderThickness=0",
+]
+
+[[control_styles]]
+target = "WindowsInternal.ComposableShell.Experiences.TextInput.Common.InputSwitcher > ContentControl > ContentPresenter > Grid"
+styles = [
+    "Background:=<WindhawkBlur BlurAmount=\"25\" TintColor=\"#25323232\"/>",
+    "BorderThickness=0",
+]
+
+[[control_styles]]
+target = "WindowsInternal.ComposableShell.Experiences.TextInput.Common.InputSwitcher > ContentControl > ContentPresenter > Grid > Grid"
+styles = [
+    "Background:=<SolidColorBrush Color=\"Transparent\"/>",
+]

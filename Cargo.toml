@@ -1,9 +1,9 @@
 [package]
 name = "rustpiz"
-version = "0.5.0"
+version = "0.6.0"
 edition = "2021"
 description = "RustPiz — effets de fenêtres pour Windows 11 : transparence, effets DWM, animations et Jelly (Win32 natif)"
-license = "MIT"
+license = "GPL-3.0-only"
 
 [dependencies]
 windows = { version = "0.62", features = [
@@ -39,13 +39,80 @@ windows = { version = "0.62", features = [
     # v0.4.2 : GetTickCount (délai depuis EVENT_OBJECT_SHOW, journal de
     # l'ouverture à masquage précoce).
     "Win32_System_SystemInformation",
+    # v0.6.0 : intégration de la barre des tâches (injection XAML dans
+    # explorer, énumération de ses modules, téléchargement des PDB publics).
+    "Win32_System_Com",
+    "Win32_System_Com_Urlmon",
+    "Win32_System_Diagnostics_ToolHelp",
+    # Purge de l'entrée de cache WinINet du PDB téléchargé (un téléchargement
+    # tronqué ne doit pas être resservi) : DeleteUrlCacheEntryW.
+    "Win32_Networking_WinInet",
+    # v0.6.1 : détection d'une session RustHawk active dans explorer (son tube
+    # de contrôle `\\.\pipe\rusthawk.<pid>`, sans s'y connecter) : WaitNamedPipeW.
+    "Win32_System_Pipes",
 ] }
 serde = { version = "1", features = ["derive"] }
 toml = "0.8"
 time = { version = "0.3", features = ["formatting", "local-offset", "macros"] }
+# v0.6.0 : intégration de la barre des tâches (portage de RustHawk, GPL-3.0 ;
+# voir crates/LICENSE-GPL3-NOTICE.md). Lier ces crates fait de l'exécutable
+# produit une œuvre combinée sous GPL-3.0 (décision assumée par l'utilisateur).
+rustpiz-theme = { workspace = true }
+rustpiz-thumbnails = { workspace = true }
+rustpiz-xaml = { workspace = true }
+rustpiz-protocol = { workspace = true }
+serde_json = "1"
+# Lecture des symboles publics du module de la barre (Rust intégral).
+pdb = "0.8"
 
+# v0.6.0 : espace de travail. Le paquet racine `rustpiz` (GPL-3.0-only) reste le seul
+# construit par défaut ; les crates portées de RustHawk (GPL-3.0-only, voir
+# crates/LICENSE-GPL3-NOTICE.md) sont des membres. La DLL `rustpiz_runtime`
+# est construite par build.rs (cargo imbriqué) puis embarquée dans l'exe.
+# L'outil gen-bindings de RustHawk n'est volontairement PAS porté.
+[workspace]
+resolver = "2"
+members = [
+    ".",
+    "crates/rustpiz-theme",
+    "crates/rustpiz-thumbnails",
+    "crates/rustpiz-xaml",
+    "crates/rustpiz-protocol",
+    "crates/rustpiz-runtime",
+]
+default-members = ["."]
+# Le dépôt RustHawk d'origine (référence locale du portage, non suivi) a son
+# propre espace de travail : il ne doit jamais être pris pour un membre.
+exclude = ["RustHawk"]
+
+# Métadonnées héritées par les crates portées uniquement (le paquet racine
+# déclare les siennes ; chaque crate portée déclare `license = "GPL-3.0-only"`).
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+
+[workspace.dependencies]
+rustpiz-theme = { path = "crates/rustpiz-theme" }
+rustpiz-thumbnails = { path = "crates/rustpiz-thumbnails" }
+rustpiz-xaml = { path = "crates/rustpiz-xaml" }
+rustpiz-protocol = { path = "crates/rustpiz-protocol" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+windows-core = "0.62"
+windows-collections = "0.3"
+windows-future = "0.3"
+windows-link = "0.2"
+windows-numerics = "0.3"
+
+# Profils communs à tout l'espace de travail (exe ET DLL).
+# `panic = "unwind"` est le défaut mais il est écrit explicitement : la DLL
+# injectée dans explorer.exe intercepte les paniques (`catch_unwind`) à chaque
+# frontière FFI ; `panic = "abort"` tuerait explorer.exe. Ne jamais le changer.
 [profile.release]
 opt-level = 3
 lto = true
 codegen-units = 1
 strip = "symbols"
+panic = "unwind"

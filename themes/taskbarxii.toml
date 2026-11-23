@@ -1,0 +1,157 @@
+schema = 1
+style_constants = [
+    "separateWidget=1",
+]
+
+[meta]
+name = "TaskbarXII"
+author = "ryokr"
+source = "https://github.com/ramensoftware/windows-11-taskbar-styling-guide/tree/main/Themes/TaskbarXII"
+
+[[control_styles]]
+target = "ScrollViewer > ScrollContentPresenter > Border > Grid"
+styles = [
+    "Background:=<AcrylicBrush TintColor=\"{ThemeResource SystemListLowColor}\" TintOpacity=\"0.1\" FallbackColor=\"{ThemeResource SystemChromeHighColor}\" />",
+    "ColumnDefinitions:=<ColumnDefinitionCollection><ColumnDefinition Width=\"*\"/><ColumnDefinition Width=\"Auto\"/><ColumnDefinition Width=\"4\"/><ColumnDefinition Width=\"Auto\"/><ColumnDefinition Width=\"*\"/></ColumnDefinitionCollection>",
+    "ActualWidth=>containerGridWidth",
+]
+
+[[control_styles]]
+target = "Taskbar.TaskbarFrame > Grid#RootGrid@DockingStates"
+styles = [
+    "Tag=horizontal",
+    "Tag@DockedLeft=vertical",
+    "Tag@DockedRight=vertical",
+    "Tag=>taskbarDock",
+]
+
+[[control_styles]]
+target = "Taskbar.TaskbarFrame"
+styles = [
+    "Grid.Column=1",
+    "HorizontalAlignment=Right",
+    "Width={{taskbarDock==`vertical`?skip():`Auto`}}",
+    "Height={{taskbarDock==`vertical`?skip():56}}",
+    "MaxWidth={{taskbarDock==`vertical`?skip():(containerGridWidth>0?containerGridWidth:skip())}}",
+]
+
+[[control_styles]]
+target = "Taskbar.TaskbarFrame > Grid"
+styles = [
+    "Height=48",
+    "CornerRadius=4",
+]
+
+[[control_styles]]
+target = "Taskbar.TaskbarBackground#BackgroundControl"
+styles = [
+    "Transform3D:=<CompositeTransform3D TranslateX=\"{{$separateWidget?(widgetWidth==``?skip():widgetWidth+4.5):skip()}}\"/>",
+    "Opacity=0.7",
+    "Height=48",
+]
+
+[[control_styles]]
+target = "Taskbar.TaskbarBackground > Grid"
+styles = [
+    "CornerRadius=4",
+    "Opacity=1",
+]
+
+[[control_styles]]
+target = "Windows.UI.Xaml.Shapes.Rectangle#BackgroundStroke"
+styles = [
+    "Height=0",
+]
+
+[[control_styles]]
+target = "Microsoft.UI.Xaml.Controls.ItemsRepeater#TaskbarFrameRepeater"
+styles = [
+    "Margin=3,0,3,0",
+]
+
+[[control_styles]]
+target = "Taskbar.AugmentedEntryPointButton > Taskbar.TaskListButtonPanel"
+styles = [
+    "Background:={{$separateWidget?`<SolidColorBrush Color=\"{ThemeResource SystemChromeAltHighColor}\" Opacity=\"0.6\" />`:skip()}}",
+    "CornerRadius={{$separateWidget?4:skip()}}",
+    "Padding={{$separateWidget?`6,0,6,0`:skip()}}",
+    "Margin={{$separateWidget?-3:-4}},0,8,0",
+    "Width=>widgetBaseWidth",
+    "MinWidth={{$separateWidget?(widgetBaseWidth>0?widgetBaseWidth+8:skip()):skip()}}",
+    "ActualWidth=>widgetWidth",
+]
+
+[[control_styles]]
+target = "Border#LargeTicker1"
+styles = [
+    "Margin=0,2,4,0",
+]
+
+[[control_styles]]
+target = "Border#LargeTicker1 > AdaptiveCards.Rendering.Uwp.WholeItemsPanel > Image"
+styles = [
+    "MaxHeight=27",
+    "MaxWidth=27",
+]
+
+[[control_styles]]
+target = "Border#LargeTicker1 > AdaptiveCards.Rendering.Uwp.WholeItemsPanel > Microsoft.UI.Xaml.Controls.AnimatedVisualPlayer"
+styles = [
+    "MaxHeight=27",
+    "MaxWidth=27",
+]
+
+[[control_styles]]
+target = "Taskbar.SearchBoxButton > Taskbar.TaskListButtonPanel, SearchUx.SearchUI.SearchButtonRootGrid#SearchBoxButtonRootPanel"
+styles = [
+    "Margin=4,0,8,0",
+]
+
+[[control_styles]]
+target = "TextBlock#SearchBoxTextBlock"
+styles = [
+    "Text=✦ Meow",
+]
+
+[[control_styles]]
+target = "SystemTray.SystemTrayFrame"
+styles = [
+    "Grid.Column=3",
+    "HorizontalAlignment=Left",
+    "VerticalAlignment=Center",
+]
+
+[[control_styles]]
+target = "StackPanel#SystemTrayFrameGrid, Grid#SystemTrayFrameGrid"
+styles = [
+    "Background:=<SolidColorBrush Color=\"{ThemeResource SystemChromeAltHighColor}\" Opacity=\"0.6\" />",
+    "CornerRadius=4",
+    "Padding=8,3,0,3",
+]
+
+[[control_styles]]
+target = "TextBlock#InnerTextBlock[Text=], TextBlock#InnerTextBlock[Text=]"
+styles = [
+    "Text=",
+]
+
+[[control_styles]]
+target = "SystemTray.DateTimeIconContent > Grid > StackPanel"
+styles = [
+    "Orientation=Horizontal",
+    "Spacing=12",
+]
+
+[[control_styles]]
+target = "TextBlock#TimeInnerTextBlock"
+styles = [
+    "FontSize=15",
+    "FontWeight=Bold",
+]
+
+[[control_styles]]
+target = "TextBlock#DateInnerTextBlock"
+styles = [
+    "FontSize=15",
+    "FontWeight=SemiBold",
+]

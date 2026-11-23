@@ -1,0 +1,156 @@
+schema = 1
+style_constants = [
+    "DockBackground=<AcrylicBrush TintColor=\"{ThemeResource SystemChromeAltHighColor}\" TintOpacity=\"0.8\" FallbackColor=\"{ThemeResource SystemChromeLowColor}\" />",
+]
+
+[meta]
+name = "DockLike"
+author = "Amber"
+source = "https://github.com/ramensoftware/windows-11-taskbar-styling-guide/tree/main/Themes/DockLike"
+
+[[control_styles]]
+target = "Taskbar.TaskbarFrame > Grid#RootGrid@DockingStates"
+styles = [
+    "Tag=horizontal",
+    "Tag@DockedLeft=vertical",
+    "Tag@DockedRight=vertical",
+    "Tag=>taskbarDock",
+]
+
+[[control_styles]]
+target = "Taskbar.TaskbarFrame"
+styles = [
+    "Width={{taskbarDock==`vertical`?skip():`Auto`}}",
+    "HorizontalAlignment={{taskbarDock==`vertical`?skip():DockNativeAlignment==`Left`?`Left`:`Center`}}",
+    "Margin={{taskbarDock==`vertical`?skip():DockNativeAlignment==`Left`?0:250}},0,250,0",
+    "ActualWidth=>DockFrameWidth",
+]
+
+[[control_styles]]
+target = ":root > ScrollViewer > ScrollContentPresenter > Border > Grid"
+styles = [
+    "ActualWidth=>DockContainerWidth",
+]
+
+[[control_styles]]
+target = "Taskbar.AugmentedEntryPointButton#AugmentedEntryPointButton"
+styles = [
+    "Margin={{DockNativeAlignment==`Left`?-DockWidgetsWidth:skip()}},0,0,0",
+    "RenderTransform:=<TranslateTransform X=\"{{DockNativeAlignment==`Left`?DockContainerWidth-DockFrameWidth:skip()}}\" />",
+]
+
+[[control_styles]]
+target = "Taskbar.AugmentedEntryPointButton#AugmentedEntryPointButton > Taskbar.TaskListButtonPanel#ExperienceToggleButtonRootPanel"
+styles = [
+    "ActualWidth=>DockWidgetsWidth",
+    "Margin={{DockNativeAlignment==`Left`?`0,4,0,4`:0}}",
+    "Padding={{DockNativeAlignment==`Left`?`6,0,2,0`:skip()}}",
+    "Background:={{DockNativeAlignment==`Left`?`$DockBackground`:skip()}}",
+    "CornerRadius={{DockNativeAlignment==`Left`?8:skip()}}",
+]
+
+[[control_styles]]
+target = "Taskbar.ExperienceToggleButton#LaunchListButton[AutomationProperties.AutomationId=StartButton] > Taskbar.TaskListButtonPanel#ExperienceToggleButtonRootPanel"
+styles = [
+    "Width=>DockStartWidth",
+    "Tag={{taskbarDock==`vertical`?`Center`:DockStartWidth==``?`Center`:DockStartInnerWidth==``?`Center`:DockStartInnerWidth<=0?`Center`:DockStartWidth-DockStartInnerWidth>8?`Left`:`Center`}}",
+    "Tag=>DockNativeAlignment",
+]
+
+[[control_styles]]
+target = "Taskbar.ExperienceToggleButton#LaunchListButton[AutomationProperties.AutomationId=StartButton] > Taskbar.TaskListButtonPanel#ExperienceToggleButtonRootPanel > Grid > Border#BackgroundElement, Taskbar.ExperienceToggleButton#LaunchListButton[AutomationProperties.AutomationId=StartButton] > Taskbar.TaskListButtonPanel#ExperienceToggleButtonRootPanel > Border#BackgroundElement"
+styles = [
+    "ActualWidth=>DockStartInnerWidth",
+]
+
+[[control_styles]]
+target = "Taskbar.TaskbarFrame > Grid#RootGrid"
+styles = [
+    "Padding=6,0,6,0",
+]
+
+[[control_styles]]
+target = "Taskbar.TaskbarFrame > Grid#RootGrid > Taskbar.TaskbarBackground > Grid"
+styles = [
+    "Background:=$DockBackground",
+    "Margin=-6,0,-6,0",
+    "CornerRadius={{DockNativeAlignment==`Left`?`0,8,0,0`:`8,8,0,0`}}",
+    "BorderBrush:=<SolidColorBrush Color=\"{ThemeResource SurfaceStrokeColorDefault}\" />",
+]
+
+[[control_styles]]
+target = "Taskbar.TaskbarFrame > Grid#RootGrid > Taskbar.TaskbarBackground > Grid > Rectangle#BackgroundFill"
+styles = [
+    "Visibility=Collapsed",
+]
+
+[[control_styles]]
+target = "Rectangle#BackgroundStroke"
+styles = [
+    "Visibility=Collapsed",
+]
+
+[[control_styles]]
+target = "StackPanel#SystemTrayFrameGrid, Grid#SystemTrayFrameGrid"
+styles = [
+    "Background:=$DockBackground",
+    "Margin=-4,-8,-4,-8",
+    "CornerRadius=10",
+    "BorderThickness=12,12,12,12",
+    "BackgroundSizing=InnerBorderEdge",
+]
+
+[[control_styles]]
+target = "SystemTray.ChevronIconView"
+styles = [
+    "Padding=0",
+]
+
+[[control_styles]]
+target = "SystemTray.NotifyIconView#NotifyItemIcon"
+styles = [
+    "Padding=0",
+]
+
+[[control_styles]]
+target = "SystemTray.OmniButton"
+styles = [
+    "Padding=0",
+]
+
+[[control_styles]]
+target = "SystemTray.CopilotIcon"
+styles = [
+    "Padding=0",
+]
+
+[[control_styles]]
+target = "SystemTray.OmniButton#NotificationCenterButton > Grid > ContentPresenter > ItemsPresenter > StackPanel > ContentPresenter > SystemTray.IconView#SystemTrayIcon > Grid"
+styles = [
+    "Padding=4,0,4,0",
+]
+
+[[control_styles]]
+target = "SystemTray.IconView#SystemTrayIcon > Grid#ContainerGrid > ContentPresenter#ContentPresenter > Grid#ContentGrid > SystemTray.TextIconContent > Grid#ContainerGrid"
+styles = [
+    "Padding=0",
+]
+
+[[control_styles]]
+target = "SystemTray.StackListView#IconStack > ItemsPresenter > StackPanel > ContentPresenter > SystemTray.IconView#SystemTrayIcon"
+styles = [
+    "Padding=0",
+]
+
+[[control_styles]]
+target = "SystemTray.Stack#ShowDesktopStack"
+styles = [
+    "Margin=0,-4,-12,-4",
+]
+
+[[control_styles]]
+target = "Taskbar.Gripper#GripperControl"
+styles = [
+    "Width=Auto",
+    "MinWidth=24",
+]

@@ -1,0 +1,153 @@
+schema = 1
+style_constants = [
+    "TaskbarFrameWidth=800",
+    "TaskbarFrameHeight=56",
+    "Shadows=",
+]
+
+[meta]
+name = "Borderless"
+author = "Ali Cool"
+source = "https://github.com/ramensoftware/windows-11-taskbar-styling-guide/tree/main/Themes/Borderless"
+
+[[control_styles]]
+target = "ScrollViewer > ScrollContentPresenter > Border > Grid"
+styles = [
+    "ColumnDefinitions:=<ColumnDefinitionCollection><ColumnDefinition Width=\"*\"/><ColumnDefinition Width=\"Auto\"/><ColumnDefinition Width=\"Auto\"/><ColumnDefinition Width=\"*\"/></ColumnDefinitionCollection>",
+    "HorizontalAlignment=Stretch",
+    "RowDefinitions:=<RowDefinitionCollection><RowDefinition Height=\"*\"/><RowDefinition Height=\"Auto\"/><RowDefinition Height=\"Auto\"/><RowDefinition Height=\"*\"/></RowDefinitionCollection>",
+    "VerticalAlignment=Stretch",
+    "ActualHeight=>containerGridHeight",
+]
+
+[[control_styles]]
+target = "Taskbar.TaskbarFrame > Grid#RootGrid@DockingStates"
+styles = [
+    "Tag=horizontal",
+    "Tag@DockedLeft=vertical",
+    "Tag@DockedRight=vertical",
+    "Tag=>taskbarDock",
+]
+
+[[control_styles]]
+target = "Taskbar.TaskbarFrame"
+styles = [
+    "Width={{taskbarDock==`vertical`?$TaskbarFrameHeight:$TaskbarFrameWidth}}",
+    "MaxWidth={{taskbarDock==`vertical`?skip():$TaskbarFrameWidth}}",
+    "Height={{taskbarDock==`vertical`?min($TaskbarFrameWidth,containerGridHeight):$TaskbarFrameHeight}}",
+    "Grid.Column=1",
+    "Grid.Row=1",
+]
+
+[[control_styles]]
+target = "SystemTray.SystemTrayFrame"
+styles = [
+    "Height={{taskbarDock==`vertical`?skip():40}}",
+    "Width={{taskbarDock==`vertical`?50:skip()}}",
+    "HorizontalAlignment={{taskbarDock==`vertical`?skip():2}}",
+    "VerticalAlignment={{taskbarDock==`vertical`?skip():1}}",
+    "Grid.Column=1",
+    "Grid.Row=1",
+]
+
+[[control_styles]]
+target = "Taskbar.TaskbarFrame > Windows.UI.Xaml.Controls.Grid#RootGrid > Taskbar.TaskbarBackground#BackgroundControl"
+styles = [
+    "CornerRadius=6",
+    "Margin=2",
+]
+
+[[control_styles]]
+target = "Windows.UI.Xaml.Shapes.Rectangle#BackgroundStroke"
+styles = [
+    "Visibility=Collapsed",
+]
+
+[[control_styles]]
+target = "Microsoft.UI.Xaml.Controls.ItemsRepeater#TaskbarFrameRepeater"
+styles = [
+    "Margin=4",
+]
+
+[[control_styles]]
+target = "Windows.UI.Xaml.Controls.Border#OverflowFlyoutBackgroundBorder"
+styles = [
+    "Shadow:=$Shadows",
+    "BorderThickness=0",
+]
+
+[[control_styles]]
+target = "Windows.UI.Xaml.Controls.Grid#ConfirmatorMainGrid"
+styles = [
+    "Shadow:=$Shadows",
+    "BorderThickness=0",
+]
+
+[[control_styles]]
+target = "Taskbar.OverflowToggleButton#OverflowButton > Taskbar.TaskListButtonPanel#OverflowToggleButtonRootPanel > Windows.UI.Xaml.Controls.Grid > Windows.UI.Xaml.Controls.FontIcon#FontIcon > Windows.UI.Xaml.Controls.Grid > Windows.UI.Xaml.Controls.TextBlock, Taskbar.OverflowToggleButton#OverflowButton > Taskbar.TaskListButtonPanel#OverflowToggleButtonRootPanel > Windows.UI.Xaml.Controls.FontIcon#FontIcon > Windows.UI.Xaml.Controls.Grid > Windows.UI.Xaml.Controls.TextBlock"
+styles = [
+    "Text=",
+]
+
+[[control_styles]]
+target = "Windows.UI.Xaml.Shapes.Rectangle#MostRecentlyUsedDivider"
+styles = [
+    "Height={{taskbarDock==`vertical`?2:32}}",
+    "Width={{taskbarDock==`vertical`?32:2}}",
+]
+
+[[control_styles]]
+target = "Windows.UI.Xaml.Shapes.Rectangle#LeftOverflowButtonDivider"
+styles = [
+    "Visibility=Collapsed",
+]
+
+[[control_styles]]
+target = "Windows.UI.Xaml.Shapes.Rectangle#RightOverflowButtonDivider"
+styles = [
+    "Visibility=Collapsed",
+]
+
+[[control_styles]]
+target = "Microsoft.UI.Xaml.Controls.ItemsRepeater#OverflowFlyoutListRepeater"
+styles = [
+    "Height=48",
+]
+
+[[control_styles]]
+target = "WindowsInternal.ComposableShell.Experiences.TextInput.Common.InputSwitcher > ContentControl > ContentPresenter > Grid > Grid"
+styles = [
+    "Background:=",
+]
+
+[[control_styles]]
+target = "WindowsInternal.ComposableShell.Experiences.TextInput.Common.InputSwitcher > ContentControl > ContentPresenter > Grid"
+styles = [
+    "Shadow:=$Shadows",
+    "BorderThickness=0",
+]
+
+[[control_styles]]
+target = "Windows.UI.Xaml.Controls.Border#HoverFlyoutBackground"
+styles = [
+    "Shadow:=$Shadows",
+    "BorderThickness=0",
+]
+
+[[control_styles]]
+target = "WindowsInternal.ComposableShell.Experiences.TextInput.Common.InputSwitcher"
+styles = [
+    "Width=960",
+]
+
+[[control_styles]]
+target = "Windows.UI.Xaml.Controls.Border#VirtualDesktopSwitcherBackground"
+styles = [
+    "BorderThickness=0",
+]
+
+[[control_styles]]
+target = "WindowsInternal.ComposableShell.Experiences.Switcher.VirtualDesktopBarElement"
+styles = [
+    "Margin=210,0,210,12",
+]

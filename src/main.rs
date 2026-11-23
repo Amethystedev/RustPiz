@@ -14,6 +14,7 @@
 #![windows_subsystem = "windows"]
 
 mod animations;
+mod barre;
 mod compat;
 mod config;
 mod dwm;
@@ -22,6 +23,7 @@ mod hotkey;
 mod logging;
 mod parametres;
 mod profils;
+mod themes_barre;
 mod touches;
 mod tray;
 mod window;
@@ -77,14 +79,35 @@ fn main() {
 
     // Les paniques sont consignées dans le journal plutôt que perdues
     // (l'application n'a pas de console).
-    std::panic::set_hook(Box::new(|infos| {
+    let fil_principal = std::thread::current().id();
+    std::panic::set_hook(Box::new(move |infos| {
         logging::erreur(&format!("PANIQUE : {infos}"));
         // Aucune fenêtre ne doit rester masquée (transparence temporaire
         // d'une animation d'ouverture) par nous.
         animations::urgence_restaurer();
+        // Barre des tâches : seulement pour une panique du fil principal
+        // (fin du processus). Une panique d'un autre fil (fil dédié de la
+        // barre, rattrapée par `catch_unwind`, fils d'échange…) ne doit pas
+        // arrêter l'intégration. Sans verrou bloquant, 500 ms au plus.
+        if std::thread::current().id() == fil_principal {
+            barre::arreter(barre::ModeArret::Panique);
+        }
     }));
 
     logging::info(&format!("=== Démarrage de RustPiz v{VERSION} ==="));
+
+    // v0.6.0 : contrôle de la DLL d'intégration de la barre des tâches
+    // embarquée (injectée plus tard, seulement si une fonction est active).
+    match barre::verifier_dll_embarquee() {
+        Ok(taille) => logging::info(&format!(
+            "DLL d'intégration de la barre des tâches embarquée : {taille} octets (PE x64 valide, \
+             construite pour {}).",
+            barre::CHAINE_DLL
+        )),
+        Err(raison) => logging::avertir(&format!(
+            "DLL d'intégration de la barre des tâches embarquée invalide : {raison}."
+        )),
+    }
 
     let configuration = config::charger();
 
@@ -122,6 +145,11 @@ fn main() {
         // ouvertes (sans attendre le premier minuteur de 2 secondes).
         profils::scanner();
 
+        // Intégration de la barre des tâches (v0.6.0) : injection dans
+        // explorer déléguée à un fil dédié ; aucun effet (ni fil) si la
+        // barre et les miniatures sont désactivées.
+        barre::appliquer(&configuration);
+
         // Notification de démarrage : confirme visuellement que
         // l'application tourne (elle n'a ni console ni fenêtre).
         tray::afficher_notification(
@@ -155,8 +183,10 @@ fn main() {
         // Nettoyage : on restaure l'état d'origine de toutes les fenêtres
         // avant de quitter, pour ne laisser aucune fenêtre modifiée.
         logging::info("Arrêt demandé, nettoyage...");
+        // Ordre : transparence d'abord (immédiat), puis la barre (bornée).
         animations::arreter();
         window::restaurer_toutes();
+        barre::arreter(barre::ModeArret::Quitter);
         hotkey::liberer(hwnd);
         tray::retirer_icone(hwnd);
     }

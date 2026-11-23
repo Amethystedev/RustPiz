@@ -1,0 +1,104 @@
+schema = 1
+style_constants = [
+    'TaskItemBackground=<AcrylicBrush TintColor="{ThemeResource SystemChromeAltHighColor}" TintOpacity="0.9" FallbackColor="{ThemeResource SystemChromeMediumColor}" />',
+    'TaskItemBorder=<LinearGradientBrush StartPoint="0,0" EndPoint="0.5,1"><GradientStop Color="#00000000" Offset="0" /><GradientStop Color="#33000000" Offset="1.5" /></LinearGradientBrush>',
+    'SystemItemBackground=<AcrylicBrush TintColor="{ThemeResource SystemChromeAltHighColor}" TintOpacity="0.8" FallbackColor="{ThemeResource SystemChromeLowColor}" />',
+    'SystemItemBorder=<LinearGradientBrush StartPoint="0,0" EndPoint="0.5,1"><GradientStop Color="#00000000" Offset="0" /><GradientStop Color="#33000000" Offset="1.5" /></LinearGradientBrush>',
+]
+
+[meta]
+name = "Surface"
+author = "Jimmy (JimmyLlancaMelo)"
+source = "https://github.com/ramensoftware/windows-11-taskbar-styling-guide/tree/main/Themes/Surface"
+
+[compat]
+
+[[control_styles]]
+target = "Grid#RootGrid > Taskbar.TaskbarBackground"
+styles = ["Margin=-20,0,-20,0"]
+
+[[control_styles]]
+target = "Grid#RootGrid > Taskbar.TaskbarBackground > Grid"
+styles = [
+    "CornerRadius=20",
+    "BorderThickness=1",
+    "BorderBrush=#40FFFFFF",
+    "Padding=-1",
+]
+
+[[control_styles]]
+target = "Rectangle#BackgroundStroke"
+styles = ["Fill=Transparent"]
+
+[[control_styles]]
+target = "Taskbar.TaskbarFrame > Grid#RootGrid@DockingStates"
+styles = [
+    "Tag=horizontal",
+    "Tag@DockedLeft=vertical",
+    "Tag@DockedRight=vertical",
+    "Tag=>taskbarDock",
+]
+
+[[control_styles]]
+target = "Taskbar.TaskbarFrame"
+styles = [
+    "Width={{taskbarDock==`vertical`?skip():`Auto`}}",
+    "Height={{taskbarDock==`vertical`?skip():70}}",
+    "HorizontalAlignment=Center",
+]
+
+[[control_styles]]
+target = "Taskbar.TaskbarFrame > Grid#RootGrid"
+styles = [
+    "Visibility=Visible",
+    "Margin=0,0,0,10",
+    "Padding=20,0,20,0",
+]
+
+[[control_styles]]
+target = "SystemTray.SystemTrayFrame"
+styles = ["Height={{taskbarDock==`vertical`?skip():70}}"]
+
+[[control_styles]]
+target = "StackPanel#SystemTrayFrameGrid, Grid#SystemTrayFrameGrid"
+styles = [
+    "Margin=0,0,0,10",
+    "CornerRadius=20,0,0,20",
+    "BorderThickness=1,1,0,1",
+    "BorderBrush=#66FFFFFF",
+    "Padding=10,5,0,5",
+    'Background:=<WindhawkBlur BlurAmount="5" TintColor="{ThemeResource SystemChromeAltHighColor}" TintOpacity="0.5" />',
+    "Visibility=Visible",
+]
+
+[[control_styles]]
+target = "Taskbar.TaskbarFrame > Grid#RootGrid > Taskbar.TaskbarBackground > Grid > Rectangle#BackgroundFill"
+styles = ['Fill:=<WindhawkBlur BlurAmount="5" TintColor="#12FFFFFF"/>']
+
+[[control_styles]]
+target = "Grid#IconPanel@RunningIndicatorStates > Border#BackgroundElement, Taskbar.TaskListLabeledButtonPanel@RunningIndicatorStates > Border#BackgroundElement"
+styles = [
+    "Background:=$TaskItemBackground",
+    "Margin=-1,5.5,1,4",
+    "CornerRadius=12",
+    "BorderThickness=2,1,0.5,2",
+    "BorderBrush:=$TaskItemBorder",
+]
+
+[[control_styles]]
+target = "Taskbar.TaskListButtonPanel#ExperienceToggleButtonRootPanel > Grid > Border#BackgroundElement, Taskbar.TaskListButtonPanel#ExperienceToggleButtonRootPanel > Border#BackgroundElement, SearchUx.SearchUI.SearchButtonRootGrid#SearchBoxButtonRootPanel > Grid > Border#BackgroundElement, SearchUx.SearchUI.SearchButtonRootGrid#SearchBoxButtonRootPanel > Border#BackgroundElement"
+styles = [
+    "Background:=$SystemItemBackground",
+    "CornerRadius=12",
+    "Margin=-1,5.5,2.5,4",
+    "BorderThickness=2,1,0.5,2",
+    "BorderBrush:=$SystemItemBorder",
+]
+
+[[control_styles]]
+target = "Grid#IconPanel@CommonStates > Rectangle#RunningIndicator, Taskbar.TaskListLabeledButtonPanel@CommonStates > Rectangle#RunningIndicator"
+styles = ["Margin=0,0,0,8"]
+
+[[control_styles]]
+target = "Border#MultiWindowElement"
+styles = ["Height=0"]

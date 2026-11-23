@@ -1,0 +1,343 @@
+schema = 1
+style_constants = [
+    "Background=<WindhawkBlur BlurAmount=\"15\" TintColor=\"{ThemeResource SystemAltLowColor}\" TintOpacity=\"0.2\" />",
+    "ElementBackground=<WindhawkBlur BlurAmount=\"20\" TintColor=\"{ThemeResource SystemAltLowColor}\" TintOpacity=\"0.4\" />",
+    "ElementBackground2=<WindhawkBlur BlurAmount=\"20\" TintColor=\"{ThemeResource SystemAltLowColor}\" TintOpacity=\"0.2\" />",
+    "AccentBackground=<WindhawkBlur BlurAmount=\"15\" TintColor=\"{ThemeResource SystemAccentColorLight1}\" TintOpacity=\"0.2\" />",
+    "BorderBrush=<LinearGradientBrush StartPoint=\"0,0\" EndPoint=\"0,1\"><GradientStop Color=\"#50808080\" Offset=\"0.0\" /><GradientStop Color=\"#50404040\" Offset=\"0.25\" /><GradientStop Color=\"#50808080\" Offset=\"1\" /></LinearGradientBrush>",
+    "ElementBorderBrush=<LinearGradientBrush StartPoint=\"0,0\" EndPoint=\"0,1\"><GradientStop Color=\"#50808080\" Offset=\"1\" /><GradientStop Color=\"#50606060\" Offset=\"0.15\" /></LinearGradientBrush>",
+    "BorderThickness=0.3,1,0.3,0.3",
+    "ElementBorderThickness=0.3,0.3,0.3,1",
+    "CornerRadius=12",
+    "ElementCornerRadius=8",
+]
+
+[meta]
+name = "LiquidGlass (Legacy)"
+author = "PhantomNimbi"
+source = "https://github.com/ramensoftware/windows-11-taskbar-styling-guide/tree/main/Themes/LiquidGlass"
+
+[[control_styles]]
+target = "Taskbar.TaskbarFrame > Grid#RootGrid"
+styles = [
+    "BorderThickness=$BorderThickness",
+    "BorderBrush:=$BorderBrush",
+    "Background:=$Background",
+]
+
+[[control_styles]]
+target = "Rectangle#BackgroundFill"
+styles = [
+    "Visibility=1",
+]
+
+[[control_styles]]
+target = "Rectangle#BackgroundStroke"
+styles = [
+    "Visibility=1",
+]
+
+[[control_styles]]
+target = "Taskbar.AugmentedEntryPointButton#AugmentedEntryPointButton > Taskbar.TaskListButtonPanel#ExperienceToggleButtonRootPanel"
+styles = [
+    "Margin=-3,0",
+]
+
+[[control_styles]]
+target = "StackPanel#SystemTrayFrameGrid, Grid#SystemTrayFrameGrid"
+styles = [
+    "Background:=$ElementBackground",
+    "BorderBrush:=$ElementBorderBrush",
+    "BorderThickness=$ElementBorderThickness",
+    "CornerRadius=$ElementCornerRadius",
+    "Margin=6",
+]
+
+[[control_styles]]
+target = "SystemTray.ChevronIconView"
+styles = [
+    "CornerRadius=$ElementCornerRadius",
+]
+
+[[control_styles]]
+target = "SystemTray.NotifyIconView#NotifyItemIcon"
+styles = [
+    "CornerRadius=$ElementCornerRadius",
+]
+
+[[control_styles]]
+target = "SystemTray.OmniButton"
+styles = [
+    "CornerRadius=$ElementCornerRadius",
+]
+
+[[control_styles]]
+target = "SystemTray.IconView#SystemTrayIcon > Grid#ContainerGrid > ContentPresenter#ContentPresenter > Grid#ContentGrid > SystemTray.TextIconContent > Grid#ContainerGrid"
+styles = [
+    "CornerRadius=$ElementCornerRadius",
+]
+
+[[control_styles]]
+target = "Taskbar.Gripper#GripperControl"
+styles = [
+    "Width=Auto",
+    "MinWidth=24",
+    "HorizontalAlignment=Left",
+]
+
+[[control_styles]]
+target = "TextBlock#TimeInnerTextBlock"
+styles = [
+    "FontSize=13",
+    "Margin=0",
+    "Padding=0",
+    "RenderTransform:=<TranslateTransform X=\"0\" Y=\"0\" />",
+]
+
+[[control_styles]]
+target = "TextBlock#DateInnerTextBlock"
+styles = [
+    "Visibility=1",
+]
+
+[[control_styles]]
+target = "TextBlock#InnerTextBlock[Text=], TextBlock#InnerTextBlock[Text=]"
+styles = [
+    "Text=",
+]
+
+[[control_styles]]
+target = "TextBlock#SearchBoxTextBlock"
+styles = [
+    "Text=Search This PC",
+    "FontSize=10",
+]
+
+[[control_styles]]
+target = "SystemTray.OmniButton#NotificationCenterButton > Grid > ContentPresenter > ItemsPresenter > StackPanel > ContentPresenter > SystemTray.IconView#SystemTrayIcon > Grid > Grid > SystemTray.TextIconContent"
+styles = [
+    "Visibility=1",
+]
+
+[[control_styles]]
+target = "Border#OverflowFlyoutBackgroundBorder"
+styles = [
+    "BorderThickness=$BorderThickness",
+    "BorderBrush:=$BorderBrush",
+    "Background:=$Background",
+    "CornerRadius=$CornerRadius",
+]
+
+[[control_styles]]
+target = "WindowsInternal.ComposableShell.Experiences.Switcher.AltTab > Windows.UI.Xaml.Controls.Grid#ModalRootGrid > Windows.UI.Xaml.Controls.Border#BackgroundElement"
+styles = [
+    "BorderThickness=0",
+    "Background=Transparent",
+    "CornerRadius=$CornerRadius",
+]
+
+[[control_styles]]
+target = "WindowsInternal.ComposableShell.Experiences.Switcher.AltTab > Windows.UI.Xaml.Controls.Grid#ModalRootGrid > Windows.UI.Xaml.Controls.Border#BackgroundElement > WindowsInternal.ComposableShell.Experiences.Switcher.SwitchItemList"
+styles = [
+    "Background:=$Background",
+    "BorderThickness=$BorderThickness",
+    "BorderBrush:=$BorderBrush",
+    "CornerRadius=$CornerRadius",
+]
+
+[[control_styles]]
+target = "WindowsInternal.ComposableShell.Experiences.Switcher.VirtualDesktopBarElement#VirtualDesktopBar"
+styles = [
+    "CornerRadius=$CornerRadius",
+    "Background:=$Background",
+]
+
+[[control_styles]]
+target = "Border#BackgroundDimmingLayer"
+styles = [
+    "Background:=$Background",
+    "CornerRadius=$CornerRadius",
+]
+
+[[control_styles]]
+target = "Taskbar.TaskListButtonPanel#ExperienceToggleButtonRootPanel > Grid > Border#BackgroundElement, Taskbar.TaskListButtonPanel#ExperienceToggleButtonRootPanel > Border#BackgroundElement"
+styles = [
+    "CornerRadius=$CornerRadius",
+    "BorderThickness=$ElementBorderThickness",
+]
+
+[[control_styles]]
+target = "Taskbar.TaskListButton#TaskListButton"
+styles = [
+    "CornerRadius=$ElementCornerRadius",
+    "BorderThickness=$ElementBorderThickness",
+]
+
+[[control_styles]]
+target = "Border#SnapBarBorder"
+styles = [
+    "Background:=$Background",
+    "BorderBrush:=$BorderBrush",
+    "CornerRadius=$CornerRadius",
+    "BorderThickness=$BorderThickness",
+    "Margin=2",
+]
+
+[[control_styles]]
+target = "Grid#IconPanel@CommonStates > Border#BackgroundElement, Taskbar.TaskListLabeledButtonPanel@CommonStates > Border#BackgroundElement"
+styles = [
+    "CornerRadius=$ElementCornerRadius",
+    "BorderThickness=$ElementBorderThickness",
+    "Background@ActiveNormal:=$ElementBackground",
+    "Background@ActivePointerOver:=$AccentBackground",
+    "Background@ActivePressed:=$ElementBackground2",
+    "Background@InactivePointerOver:=$AccentBackground",
+    "Background@InactivePressed:=$ElementBackground2",
+    "BorderBrush@ActiveNormal:=$ElementBorderBrush",
+    "BorderBrush@ActivePointerOver:=$ElementBorderBrush",
+    "BorderBrush@ActivePressed:=$ElementBorderBrush",
+    "BorderBrush@InactivePointerOver:=$ElementBorderBrush",
+    "BorderBrush@InactivePressed:=$ElementBorderBrush",
+    "Margin=1",
+]
+
+[[control_styles]]
+target = "ContentPresenter#ContentPresenter@CommonStates"
+styles = [
+    "CornerRadius=$ElementCornerRadius",
+    "BorderThickness=$ElementBorderThickness",
+    "Background@ActiveNormal:=$ElementBackground",
+    "Background@ActivePointerOver:=$AccentBackground",
+    "Background@ActivePressed:=$ElementBackground2",
+    "Background@InactivePointerOver:=$AccentBackground",
+    "Background@InactivePressed:=$ElementBackground2",
+    "BorderBrush@ActiveNormal:=$ElementBorderBrush",
+    "BorderBrush@ActivePointerOver:=$ElementBorderBrush",
+    "BorderBrush@ActivePressed:=$ElementBorderBrush",
+    "BorderBrush@InactivePointerOver:=$ElementBorderBrush",
+    "BorderBrush@InactivePressed:=$ElementBorderBrush",
+    "Margin=1",
+]
+
+[[control_styles]]
+target = "Border#SnapPickerBorder"
+styles = [
+    "Background:=$Background",
+    "BorderBrush:=$BorderBrush",
+    "CornerRadius=$CornerRadius",
+    "BorderThickness=$BorderThickness",
+    "Margin=2",
+]
+
+[[control_styles]]
+target = "Taskbar.TaskListButtonPanel#ExperienceToggleButtonRootPanel"
+styles = [
+    "Background:=Transparent",
+]
+
+[[control_styles]]
+target = "ToolTip > ContentPresenter#LayoutRoot"
+styles = [
+    "Background:=$Background",
+    "BorderBrush:=$BorderBrush",
+    "BorderThickness:=$BorderThickness",
+    "CornerRadius=$CornerRadius",
+]
+
+[[control_styles]]
+target = "WindowsInternal.ComposableShell.Experiences.Switcher.VirtualDesktopBarElement > Grid#GridElement > Border#VirtualDesktopSwitcherBackground"
+styles = [
+    "BorderBrush:=$BorderBrush",
+    "BorderThickness=$BorderThickness",
+    "CornerRadius=$CornerRadius",
+    "Background:=$Background",
+]
+
+[[control_styles]]
+target = "WindowsInternal.ComposableShell.Experiences.Switcher.SwitchItemListViewItem > Grid > Border"
+styles = [
+    "CornerRadius=$CornerRadius",
+]
+
+[[control_styles]]
+target = "Border#VirtualDesktopBarBackground"
+styles = [
+    "Background:=$Background",
+    "BorderBrush:=$BorderBrush",
+    "BorderThickness=$BorderThickness",
+    "CornerRadius=$CornerRadius",
+]
+
+[[control_styles]]
+target = "Rectangle#RunningIndicator"
+styles = [
+    "Fill:=$AccentBackground",
+    "Width=14",
+]
+
+[[control_styles]]
+target = "Rectangle#ShowDesktopPipe"
+styles = [
+    "Visibility=1",
+]
+
+[[control_styles]]
+target = "Rectangle#RightOverflowButtonDivider"
+styles = [
+    "Visibility=1",
+]
+
+[[control_styles]]
+target = "SearchUx.SearchUI.SearchIconButton > SearchUx.SearchUI.SearchButtonRootGrid@CommonStates > Grid > Border#BackgroundElement, SearchUx.SearchUI.SearchIconButton > SearchUx.SearchUI.SearchButtonRootGrid@CommonStates > Border#BackgroundElement"
+styles = [
+    "Background:=Transparent",
+    "BorderBrush:=Transparent",
+]
+
+[[control_styles]]
+target = "SearchUx.SearchUI.SearchButtonRootGrid"
+styles = [
+    "Background:=Transparent",
+    "BorderBrush:=Transparent",
+]
+
+[[control_styles]]
+target = "Border#SearchPillBackgroundElement"
+styles = [
+    "BorderBrush:=$ElementBorderBrush",
+    "BorderThickness=$ElementBorderThickness",
+    "CornerRadius=$ElementCornerRadius",
+    "Margin=0,1",
+]
+
+[[control_styles]]
+target = "SearchUx.SearchUI.SearchBoxButton > SearchUx.SearchUI.SearchButtonRootGrid@CommonStates > Grid > Border#BackgroundElement, SearchUx.SearchUI.SearchBoxButton > SearchUx.SearchUI.SearchButtonRootGrid@CommonStates > Border#BackgroundElement"
+styles = [
+    "CornerRadius=$ElementCornerRadius",
+    "BorderThickness=$ElementBorderThickness",
+    "BorderBrush:=$ElementBorderBrush",
+    "Background:=$ElementBackground",
+    "Margin=0,-4",
+]
+
+[[control_styles]]
+target = "Canvas#HoverFlyoutCanvas > Grid#HoverFlyoutGrid > Border#HoverFlyoutBackground"
+styles = [
+    "Shadow:=",
+    "Background:=$Background",
+    "BorderBrush:=$BorderBrush",
+    "BorderThickness=$BorderThickness",
+    "CornerRadius=$CornerRadius",
+]
+
+[[control_styles]]
+target = "SystemTray.SystemTrayFrame"
+styles = [
+    "HorizontalAlignment=Right",
+]
+
+[[control_styles]]
+target = "Grid#AugmentedEntryPointContentGrid"
+styles = [
+    "HorizontalAlignment=Left",
+]

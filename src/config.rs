@@ -14,6 +14,7 @@ use std::path::PathBuf;
 use crate::animations::EffetAnimation;
 use crate::explorer;
 use crate::logging;
+use crate::themes_barre;
 
 /// Configuration complète de l'application.
 #[derive(Debug, Clone, Deserialize)]
@@ -43,6 +44,16 @@ pub struct Config {
     /// Puissance de l'effet Jelly, en % (0 = aucun mouvement, 100 = très
     /// forte déformation).
     pub jelly_puissance: u8,
+    /// Barre des tâches personnalisée (v0.6.0) : si vrai, le thème
+    /// `barre_theme` est appliqué à l'Explorateur via la DLL d'intégration.
+    pub barre_active: bool,
+    /// Thème de la barre des tâches (identifiant de `themes_barre::THEMES`).
+    pub barre_theme: String,
+    /// Miniatures personnalisées (v0.6.0) : si vrai, la taille des miniatures
+    /// de la barre est portée à `miniatures_taille` % (build 26100+).
+    pub miniatures_actives: bool,
+    /// Taille des miniatures, en % (100 à 300).
+    pub miniatures_taille: u32,
     /// Clé cachée (absente du modèle par défaut, v0.4.7) : si vrai, la
     /// transition native d'apparition de DWM est désactivée pendant une
     /// ouverture animée (`DWMWA_TRANSITIONS_FORCEDISABLED`, dès la création
@@ -125,6 +136,10 @@ impl Default for Config {
             effet_fermeture: false,
             jelly_actif: false,
             jelly_puissance: 50,
+            barre_active: false,
+            barre_theme: themes_barre::THEME_DEFAUT.to_string(),
+            miniatures_actives: false,
+            miniatures_taille: MINIATURES_TAILLE_DEFAUT,
             desactiver_transition_dwm: true,
             raccourcis: Raccourcis::default(),
             exclusions_classes: explorer::classes_exclues_defaut(),
@@ -133,6 +148,13 @@ impl Default for Config {
         }
     }
 }
+
+/// Taille des miniatures par défaut, en %.
+pub const MINIATURES_TAILLE_DEFAUT: u32 = 150;
+/// Taille minimale des miniatures, en %.
+pub const MINIATURES_TAILLE_MIN: u32 = 100;
+/// Taille maximale des miniatures, en %.
+pub const MINIATURES_TAILLE_MAX: u32 = 300;
 
 impl Config {
     /// Corrige les valeurs incohérentes (opacité hors limites, etc.).
@@ -157,6 +179,24 @@ impl Config {
                 self.jelly_puissance
             ));
             self.jelly_puissance = 100;
+        }
+        if !themes_barre::existe(&self.barre_theme) {
+            logging::avertir(&format!(
+                "barre_theme=\"{}\" inconnu, valeur \"{}\" utilisée.",
+                self.barre_theme,
+                themes_barre::THEME_DEFAUT
+            ));
+            self.barre_theme = themes_barre::THEME_DEFAUT.to_string();
+        }
+        let taille = self
+            .miniatures_taille
+            .clamp(MINIATURES_TAILLE_MIN, MINIATURES_TAILLE_MAX);
+        if taille != self.miniatures_taille {
+            logging::avertir(&format!(
+                "miniatures_taille={} hors limites ({MINIATURES_TAILLE_MIN}-{MINIATURES_TAILLE_MAX}), valeur {taille} utilisée.",
+                self.miniatures_taille
+            ));
+            self.miniatures_taille = taille;
         }
     }
 }
@@ -195,6 +235,20 @@ effet_fermeture = false
 # Puissance en % : de 0 (aucun mouvement) à 100 (très forte déformation).
 jelly_actif = false
 jelly_puissance = 50
+
+# Barre des tâches personnalisée : si true, le thème ci-dessous est appliqué
+# à l'Explorateur (Windows 11) via la DLL d'intégration injectée dans explorer.
+# Thème : identifiant parmi ceux proposés dans la fenêtre de paramètres
+# (onglet « Param Barre des Taches »), par exemple "surface", "liquidglass",
+# "windows7", "winxp". Un identifiant inconnu est remplacé par "surface".
+barre_active = false
+barre_theme = "surface"
+
+# Miniatures personnalisées : si true, la taille des miniatures de la barre
+# est modifiée (Windows 11 24H2 / build 26100 ou plus récent).
+# Taille en % : de 100 à 300.
+miniatures_actives = false
+miniatures_taille = 150
 
 [raccourcis]
 # Format : Modificateurs+Touche. Modificateurs : Ctrl, Alt, Shift, Win.
@@ -609,7 +663,8 @@ fn chaine_toml(texte: &str) -> String {
     resultat
 }
 
-/// Valeurs modifiables depuis la fenêtre de paramètres (v0.5.0).
+/// Valeurs modifiables depuis la fenêtre de paramètres (v0.5.0 ; barre des
+/// tâches et miniatures depuis la v0.6.0).
 #[derive(Debug, Clone)]
 pub struct Parametres {
     pub opacite_defaut: u8,
@@ -621,6 +676,12 @@ pub struct Parametres {
     pub effet_fermeture: bool,
     pub jelly_actif: bool,
     pub jelly_puissance: u8,
+    pub barre_active: bool,
+    /// Identifiant de thème ; inconnu : `themes_barre::THEME_DEFAUT` écrit.
+    pub barre_theme: String,
+    pub miniatures_actives: bool,
+    /// Taille en % ; bornée à 100-300 à l'écriture.
+    pub miniatures_taille: u32,
     pub raccourcis: Raccourcis,
 }
 
@@ -638,6 +699,15 @@ fn maj_parametres(contenu: &str, p: &Parametres) -> String {
         ("effet_fermeture", p.effet_fermeture.to_string()),
         ("jelly_actif", p.jelly_actif.to_string()),
         ("jelly_puissance", p.jelly_puissance.min(100).to_string()),
+        ("barre_active", p.barre_active.to_string()),
+        ("barre_theme", chaine_toml(themes_barre::normaliser(&p.barre_theme))),
+        ("miniatures_actives", p.miniatures_actives.to_string()),
+        (
+            "miniatures_taille",
+            p.miniatures_taille
+                .clamp(MINIATURES_TAILLE_MIN, MINIATURES_TAILLE_MAX)
+                .to_string(),
+        ),
     ];
     let contenu = maj_cles_racine(contenu, &racine);
     let raccourcis = [
@@ -901,6 +971,10 @@ mod tests {
             effet_fermeture: true,
             jelly_actif: true,
             jelly_puissance: 37,
+            barre_active: true,
+            barre_theme: "liquidglass-legacy-alternate".to_string(),
+            miniatures_actives: true,
+            miniatures_taille: 225,
             raccourcis: Raccourcis {
                 bascule: "Ctrl+Shift+F9".to_string(),
                 augmenter: "Alt+PageHaut".to_string(),
@@ -915,6 +989,9 @@ mod tests {
         assert_eq!(c.effet_fenetre, "balayage_pixels");
         assert!(c.effet_ouverture && c.effet_fermeture && c.jelly_actif);
         assert_eq!(c.jelly_puissance, 37);
+        assert!(c.barre_active && c.miniatures_actives);
+        assert_eq!(c.barre_theme, "liquidglass-legacy-alternate");
+        assert_eq!(c.miniatures_taille, 225);
         assert_eq!(c.raccourcis.bascule, "Ctrl+Shift+F9");
         assert_eq!(c.raccourcis.augmenter, "Alt+PageHaut");
         assert_eq!(c.raccourcis.diminuer, "Win+Alt+Bas");
@@ -929,6 +1006,8 @@ mod tests {
         assert_eq!(r.matches("opacite_defaut = ").count(), 1);
         assert_eq!(r.matches("bascule = ").count(), 1);
         assert_eq!(r.matches("jelly_puissance = ").count(), 1);
+        assert_eq!(r.matches("barre_theme = ").count(), 1);
+        assert_eq!(r.matches("miniatures_taille = ").count(), 1);
         assert!(r.contains("# Active / désactive la transparence de la fenêtre sous le curseur."));
         assert!(r.contains("exclusions_processus = ["));
         // Idempotent.
@@ -999,5 +1078,105 @@ mod tests {
         let mut c = Config { effet_fenetre: "n'importe quoi".to_string(), ..Config::default() };
         c.valider();
         assert_eq!(c.effet_fenetre, "aucun");
+    }
+
+    #[test]
+    fn toml_defaut_contient_barre_et_miniatures() {
+        let c: Config = toml::from_str(TOML_DEFAUT).expect("TOML_DEFAUT doit se parser");
+        assert!(!c.barre_active && !c.miniatures_actives);
+        assert_eq!(c.barre_theme, "surface");
+        assert_eq!(c.miniatures_taille, 150);
+        // Clés à la racine, avant la première table.
+        let table = TOML_DEFAUT.find("[raccourcis]").expect("table présente");
+        for cle in [
+            "barre_active = false",
+            "barre_theme = \"surface\"",
+            "miniatures_actives = false",
+            "miniatures_taille = 150",
+        ] {
+            let pos = TOML_DEFAUT.find(cle).expect("clé présente");
+            assert!(pos < table, "{cle} doit précéder [raccourcis]");
+        }
+    }
+
+    #[test]
+    fn ancienne_config_sans_barre_ni_miniatures_prend_defauts() {
+        let mut c: Config =
+            toml::from_str("opacite_defaut = 70\njelly_actif = true\n").expect("parse");
+        c.valider();
+        assert!(!c.barre_active && !c.miniatures_actives);
+        assert_eq!(c.barre_theme, "surface");
+        assert_eq!(c.miniatures_taille, 150);
+        assert!(c.jelly_actif);
+        assert_eq!(c.opacite_defaut, 70);
+    }
+
+    #[test]
+    fn miniatures_taille_bornee() {
+        for (lu, attendu) in [(0, 100), (99, 100), (100, 100), (150, 150), (300, 300), (301, 300), (5000, 300)] {
+            let mut c: Config =
+                toml::from_str(&format!("miniatures_taille = {lu}\n")).expect("parse");
+            c.valider();
+            assert_eq!(c.miniatures_taille, attendu, "valeur lue {lu}");
+        }
+        // Bornée aussi à l'écriture.
+        let mut p = parametres_exemple();
+        p.miniatures_taille = 999;
+        let r = maj_parametres(TOML_DEFAUT, &p);
+        assert!(r.contains("miniatures_taille = 300\n"));
+        p.miniatures_taille = 3;
+        let r = maj_parametres(TOML_DEFAUT, &p);
+        assert!(r.contains("miniatures_taille = 100\n"));
+    }
+
+    #[test]
+    fn miniatures_taille_negative_refusee_par_serde() {
+        // u32 : une valeur négative rend le fichier invalide (défauts utilisés
+        // par `charger`), elle n'est jamais acceptée silencieusement.
+        assert!(toml::from_str::<Config>("miniatures_taille = -5\n").is_err());
+    }
+
+    #[test]
+    fn theme_inconnu_remplace_par_surface() {
+        let mut c: Config = toml::from_str("barre_theme = \"n'existe pas\"\n").expect("parse");
+        c.valider();
+        assert_eq!(c.barre_theme, "surface");
+        let mut c: Config = toml::from_str("barre_theme = \"Surface\"\n").expect("parse");
+        c.valider();
+        assert_eq!(c.barre_theme, "surface");
+        let mut c: Config = toml::from_str("barre_theme = \"winxp-zune\"\n").expect("parse");
+        c.valider();
+        assert_eq!(c.barre_theme, "winxp-zune");
+        // À l'écriture : un thème inconnu est écrit "surface".
+        let mut p = parametres_exemple();
+        p.barre_theme = "inconnu".to_string();
+        let r = maj_parametres(TOML_DEFAUT, &p);
+        let c: Config = toml::from_str(&r).expect("parse");
+        assert_eq!(c.barre_theme, "surface");
+    }
+
+    #[test]
+    fn aller_retour_barre_et_miniatures_ancienne_config() {
+        // Ancienne config v0.5.0 (sans les nouvelles clés) : insertion avant
+        // la table, relecture identique, puis remplacement sur place.
+        let src = "opacite_defaut = 80\njelly_puissance = 50\n\n[raccourcis]\nbascule = \"Ctrl+Alt+T\"\n";
+        let r = maj_parametres(src, &parametres_exemple());
+        let c: Config = toml::from_str(&r).expect("parse");
+        verifier_exemple(&c);
+        let table = r.find("[raccourcis]").expect("table");
+        assert!(r.find("barre_theme = ").expect("clé") < table);
+        assert!(r.find("miniatures_taille = ").expect("clé") < table);
+        let mut p = parametres_exemple();
+        p.barre_active = false;
+        p.barre_theme = "windows7".to_string();
+        p.miniatures_actives = false;
+        p.miniatures_taille = 100;
+        let r2 = maj_parametres(&r, &p);
+        let c: Config = toml::from_str(&r2).expect("parse");
+        assert!(!c.barre_active && !c.miniatures_actives);
+        assert_eq!(c.barre_theme, "windows7");
+        assert_eq!(c.miniatures_taille, 100);
+        assert_eq!(r2.matches("barre_theme = ").count(), 1);
+        assert_eq!(maj_parametres(&r2, &p), r2);
     }
 }

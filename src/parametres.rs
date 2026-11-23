@@ -1,8 +1,9 @@
-//! Fenêtre de paramètres native Win32 (aucun framework graphique), v0.5.0.
+//! Fenêtre de paramètres native Win32 (aucun framework graphique), v0.6.0.
 //!
 //! Tous les réglages de l'application (l'ancien menu de l'icône n'a plus
 //! que « Paramètres », « Recharger la configuration » et « Quitter ») sont
-//! répartis dans trois onglets (`SysTabControl32`) :
+//! répartis dans cinq onglets (`SysTabControl32`, `TCS_MULTILINE` : les
+//! titres tiennent sur deux rangées) :
 //! - « Param Transparence » : interrupteur général (non persisté, comme
 //!   l'ancienne entrée de menu), transparence au démarrage, Explorateur
 //!   automatiquement transparent, opacité par défaut (10-100 %), effet DWM à
@@ -11,9 +12,18 @@
 //!   par capture clavier ;
 //! - « Param Jelly » : activation et puissance (0-100 %, pas de 1) ;
 //! - « Param Effets Ouverture/Fermeture » : animation de l'ouverture, de la
-//!   fermeture, choix de l'effet (tous les effets, shaders compris).
+//!   fermeture, choix de l'effet (tous les effets, shaders compris) ;
+//! - « Param Barre des Taches » (v0.6.0) : activation et thème de la barre
+//!   des tâches (54 thèmes de `themes_barre`, triés par nom) ;
+//! - « Param miniatures » (v0.6.0) : activation et taille (100-300 %) des
+//!   miniatures personnalisées.
 //!
-//! Les contrôles des trois pages sont des enfants DIRECTS de la fenêtre,
+//! Les deux derniers onglets enregistrent leurs réglages ; à la validation,
+//! `tray::recharger_configuration` les transmet à l'intégration de la barre
+//! des tâches (`barre::appliquer`, fil dédié). Une ligne de texte discrète
+//! rappelle dans chacun les conditions d'application.
+//!
+//! Les contrôles des pages sont des enfants DIRECTS de la fenêtre,
 //! affichés/masqués selon l'onglet (`TCN_SELCHANGE`) ; l'onglet est placé
 //! en bas de l'ordre Z (sinon il recouvrirait les contrôles et capterait les
 //! clics). Les interrupteurs sont des boutons `BS_OWNERDRAW` dessinés en GDI
@@ -63,7 +73,7 @@ use windows::Win32::UI::Controls::{
     ICC_TAB_CLASSES, INITCOMMONCONTROLSEX, NMHDR, ODS_DISABLED, ODS_FOCUS, ODS_NOFOCUSRECT,
     ODT_BUTTON, TBM_SETLINESIZE, TBM_SETPAGESIZE, TBM_SETPOS, TBM_SETRANGE, TBM_SETTICFREQ,
     TBS_AUTOTICKS, TCIF_TEXT, TCITEMW, TCM_ADJUSTRECT, TCM_GETCURSEL, TCM_INSERTITEMW,
-    TCN_SELCHANGE, WC_TABCONTROLW,
+    TCN_SELCHANGE, TCS_MULTILINE, WC_TABCONTROLW,
 };
 use windows::Win32::UI::HiDpi::GetDpiForSystem;
 use windows::Win32::UI::Input::KeyboardAndMouse::{
@@ -94,6 +104,7 @@ use crate::config::{self, Parametres, Raccourcis};
 use crate::dwm::EffetDwm;
 use crate::hotkey;
 use crate::logging;
+use crate::themes_barre;
 use crate::touches::{self, Appui, Modificateurs};
 use crate::tray;
 use crate::window;
@@ -142,16 +153,39 @@ const ID_SW_FERMETURE: i32 = 3302;
 const ID_LBL_EFFET: i32 = 3303;
 const ID_CB_EFFET: i32 = 3304;
 const ID_ETAT_EFFETS: i32 = 3305;
+// Page 4 : barre des tâches (v0.6.0).
+const ID_SW_BARRE: i32 = 3401;
+const ID_LBL_THEME: i32 = 3402;
+const ID_CB_THEME: i32 = 3403;
+const ID_NOTE_BARRE: i32 = 3404;
+// Page 5 : miniatures (v0.6.0).
+const ID_SW_MINIATURES: i32 = 3501;
+const ID_LBL_MINIATURES: i32 = 3502;
+const ID_TB_MINIATURES: i32 = 3503;
+const ID_VAL_MINIATURES: i32 = 3504;
+const ID_NOTE_MINIATURES: i32 = 3505;
+
+/// Note de l'onglet « barre des tâches » : conditions d'application.
+const TEXTE_NOTE_BARRE: &str =
+    "Appliqué à l'Explorateur à la validation (Windows 11). En cas de conflit (Windhawk, \
+     TranslucentTB…), rien n'est appliqué : une notification le signale et RustPiz ne \
+     réessaie qu'après un changement de réglage ou un redémarrage de l'Explorateur.";
+/// Note de l'onglet « miniatures » : conditions d'application.
+const TEXTE_NOTE_MINIATURES: &str =
+    "Appliqué à la validation. Les miniatures demandent Windows 11 24H2 (build 26100) ou plus \
+     récent.";
 
 /// Libellés des onglets.
-const ONGLETS: [&str; 3] = [
+const ONGLETS: [&str; 5] = [
     "Param Transparence",
     "Param Jelly",
     "Param Effets Ouverture/Fermeture",
+    "Param Barre des Taches",
+    "Param miniatures",
 ];
 
 /// Contrôles de chaque page (affichés seulement quand l'onglet est actif).
-const PAGES: [&[i32]; 3] = [
+const PAGES: [&[i32]; 5] = [
     &[
         ID_SW_ACTIF,
         ID_SW_DEMARRAGE,
@@ -172,16 +206,26 @@ const PAGES: [&[i32]; 3] = [
     ],
     &[ID_SW_JELLY, ID_LBL_JELLY, ID_TB_JELLY, ID_VAL_JELLY, ID_ETAT_JELLY],
     &[ID_SW_OUVERTURE, ID_SW_FERMETURE, ID_LBL_EFFET, ID_CB_EFFET, ID_ETAT_EFFETS],
+    &[ID_SW_BARRE, ID_LBL_THEME, ID_CB_THEME, ID_NOTE_BARRE],
+    &[
+        ID_SW_MINIATURES,
+        ID_LBL_MINIATURES,
+        ID_TB_MINIATURES,
+        ID_VAL_MINIATURES,
+        ID_NOTE_MINIATURES,
+    ],
 ];
 
 /// Interrupteurs (boutons owner-draw).
-const INTERRUPTEURS: [i32; 6] = [
+const INTERRUPTEURS: [i32; 8] = [
     ID_SW_ACTIF,
     ID_SW_DEMARRAGE,
     ID_SW_EXPLORATEUR,
     ID_SW_JELLY,
     ID_SW_OUVERTURE,
     ID_SW_FERMETURE,
+    ID_SW_BARRE,
+    ID_SW_MINIATURES,
 ];
 
 /// Champs de raccourci, dans l'ordre de `RACCOURCIS` : bascule, opacité -,
@@ -323,7 +367,9 @@ fn police() -> HFONT {
 
 /// Dimensions de la zone cliente (pixels logiques à 96 DPI).
 const LARGEUR_CLIENT: i32 = 560;
-const HAUTEUR_CLIENT: i32 = 520;
+const HAUTEUR_CLIENT: i32 = 550;
+/// Hauteur du contrôle d'onglets (deux rangées de titres comprises).
+const HAUTEUR_ONGLETS: i32 = 470;
 
 /// Crée la fenêtre (les contrôles sont créés dans `WM_CREATE`).
 unsafe fn creer_fenetre() -> windows::core::Result<HWND> {
@@ -766,12 +812,14 @@ unsafe fn construire(hwnd: HWND) {
     let onglet_x = marge;
     let onglet_y = marge;
     let onglet_l = largeur_client - 2 * marge;
-    let onglet_h = px(440);
+    let onglet_h = px(HAUTEUR_ONGLETS);
+    // Cinq titres : plusieurs rangées plutôt qu'une fenêtre très large (la
+    // zone d'affichage est relue par TCM_ADJUSTRECT après l'insertion).
     let onglets = creer(
         hwnd,
         WC_TABCONTROLW,
         "",
-        (WS_CLIPSIBLINGS | WS_TABSTOP | WS_GROUP).0,
+        TCS_MULTILINE | (WS_CLIPSIBLINGS | WS_TABSTOP | WS_GROUP).0,
         0,
         onglet_x,
         onglet_y,
@@ -972,6 +1020,68 @@ unsafe fn construire(hwnd: HWND) {
     y += px(40);
     texte_multiligne(hwnd, &texte_etat_effets(), x0, y, lu, px(90), ID_ETAT_EFFETS);
 
+    // --- Page 4 : barre des tâches ------------------------------------------
+    let mut y = y0;
+    interrupteur(
+        hwnd,
+        "Activer la barre des tâches",
+        cfg.barre_active,
+        x0,
+        y,
+        lu,
+        ID_SW_BARRE,
+    );
+    y += px(40);
+    libelle(hwnd, "Thème de la barre des tâches", x0, y, lu, px(24), ID_LBL_THEME);
+    y += px(26);
+    let themes = themes_barre::tries_par_nom();
+    let index_theme = themes
+        .iter()
+        .position(|(id, _)| *id == themes_barre::normaliser(&cfg.barre_theme))
+        .unwrap_or(0);
+    let noms_themes: Vec<String> = themes.iter().map(|(_, n)| n.to_string()).collect();
+    liste(hwnd, &noms_themes, index_theme, x0, y, px(380).min(lu), ID_CB_THEME);
+    y += px(40);
+    texte_multiligne(hwnd, TEXTE_NOTE_BARRE, x0, y, lu, px(64), ID_NOTE_BARRE);
+
+    // --- Page 5 : miniatures ------------------------------------------------
+    let mut y = y0;
+    interrupteur(
+        hwnd,
+        "Activer les miniatures personnalisées",
+        cfg.miniatures_actives,
+        x0,
+        y,
+        lu,
+        ID_SW_MINIATURES,
+    );
+    y += px(40);
+    let taille = cfg
+        .miniatures_taille
+        .clamp(config::MINIATURES_TAILLE_MIN, config::MINIATURES_TAILLE_MAX);
+    libelle(hwnd, "Taille des miniatures", x0, y, largeur_libelle, px(30), ID_LBL_MINIATURES);
+    curseur(
+        hwnd,
+        config::MINIATURES_TAILLE_MIN as u16,
+        config::MINIATURES_TAILLE_MAX as u16,
+        taille as i32,
+        x0 + largeur_libelle,
+        y,
+        lu - largeur_libelle - largeur_valeur,
+        ID_TB_MINIATURES,
+    );
+    libelle(
+        hwnd,
+        &format!("{taille} %"),
+        x0 + lu - largeur_valeur + px(6),
+        y,
+        largeur_valeur - px(6),
+        px(30),
+        ID_VAL_MINIATURES,
+    );
+    y += px(44);
+    texte_multiligne(hwnd, TEXTE_NOTE_MINIATURES, x0, y, lu, px(40), ID_NOTE_MINIATURES);
+
     // --- Bas de la fenêtre : message et boutons ----------------------------
     let bouton_l = px(100);
     let bouton_h = px(30);
@@ -1144,6 +1254,11 @@ unsafe fn valider(hwnd: HWND) {
             EffetAnimation::depuis_nom(&config::charger().effet_fenetre)
                 .unwrap_or(EffetAnimation::Zoom)
         });
+    // Thème : index de la liste triée par nom (même ordre qu'à la
+    // construction) ; sans sélection, le thème enregistré est conservé.
+    let barre_theme = selection_liste(hwnd, ID_CB_THEME)
+        .and_then(|i| themes_barre::tries_par_nom().get(i).map(|(id, _)| id.to_string()))
+        .unwrap_or_else(|| config::charger().barre_theme);
     let effet_dwm = selection_liste(hwnd, ID_CB_DWM)
         .and_then(|i| i.checked_sub(1))
         .and_then(|i| CHOIX_DWM.get(i).copied());
@@ -1157,6 +1272,15 @@ unsafe fn valider(hwnd: HWND) {
         effet_fermeture: interrupteur_actif(hwnd, ID_SW_FERMETURE),
         jelly_actif: interrupteur_actif(hwnd, ID_SW_JELLY),
         jelly_puissance: position_curseur(hwnd, ID_TB_JELLY).unwrap_or(50).clamp(0, 100) as u8,
+        barre_active: interrupteur_actif(hwnd, ID_SW_BARRE),
+        barre_theme,
+        miniatures_actives: interrupteur_actif(hwnd, ID_SW_MINIATURES),
+        miniatures_taille: position_curseur(hwnd, ID_TB_MINIATURES)
+            .unwrap_or(config::MINIATURES_TAILLE_DEFAUT as i32)
+            .clamp(
+                config::MINIATURES_TAILLE_MIN as i32,
+                config::MINIATURES_TAILLE_MAX as i32,
+            ) as u32,
         raccourcis: Raccourcis {
             bascule,
             augmenter,
@@ -1176,6 +1300,14 @@ unsafe fn valider(hwnd: HWND) {
 
     match config::enregistrer_parametres(&parametres) {
         Ok(()) => {
+            logging::info(&format!(
+                "Barre des tâches : {} (thème « {} ») ; miniatures : {} ({} %) — \
+                 application déléguée au fil d'intégration de la barre (v0.6.0).",
+                if parametres.barre_active { "activée" } else { "désactivée" },
+                themes_barre::nom(&parametres.barre_theme),
+                if parametres.miniatures_actives { "activées" } else { "désactivées" },
+                parametres.miniatures_taille
+            ));
             animations::rearmer(effet_choisi, rearmer_ouverture, rearmer_jelly);
             // Applique tout à chaud (animations, Jelly, opacité, profils,
             // raccourcis réenregistrés).
@@ -1469,6 +1601,11 @@ unsafe extern "system" fn procedure_parametres(
                         definir_texte(hwnd, ID_VAL_JELLY, &format!("{v} %"));
                         maj_etat_jelly(hwnd);
                     }
+                    ID_TB_MINIATURES => {
+                        let v = position_curseur(hwnd, ID_TB_MINIATURES)
+                            .unwrap_or(config::MINIATURES_TAILLE_DEFAUT as i32);
+                        definir_texte(hwnd, ID_VAL_MINIATURES, &format!("{v} %"));
+                    }
                     _ => {}
                 }
             }
@@ -1521,7 +1658,9 @@ unsafe extern "system" fn procedure_parametres(
             let couleur_texte = match GetDlgCtrlID(controle) {
                 ID_MESSAGE => ROUGE_ERREUR,
                 ID_ETAT_JELLY | ID_ETAT_EFFETS => ORANGE_ETAT,
-                ID_AIDE_DWM | ID_AIDE_RACCOURCIS => COLORREF(GetSysColor(COLOR_GRAYTEXT)),
+                ID_AIDE_DWM | ID_AIDE_RACCOURCIS | ID_NOTE_BARRE | ID_NOTE_MINIATURES => {
+                    COLORREF(GetSysColor(COLOR_GRAYTEXT))
+                }
                 _ => COLORREF(GetSysColor(COLOR_WINDOWTEXT)),
             };
             let _ = SetTextColor(hdc, couleur_texte);
@@ -1540,7 +1679,15 @@ unsafe extern "system" fn procedure_parametres(
             };
             let sans_defaut = |id: i32| {
                 INTERRUPTEURS.contains(&id)
-                    || matches!(id, ID_TB_OPACITE | ID_TB_JELLY | ID_CB_EFFET | ID_CB_DWM)
+                    || matches!(
+                        id,
+                        ID_TB_OPACITE
+                            | ID_TB_JELLY
+                            | ID_TB_MINIATURES
+                            | ID_CB_EFFET
+                            | ID_CB_DWM
+                            | ID_CB_THEME
+                    )
             };
             if sans_defaut(id_focus) || sans_defaut(id_parent_focus) {
                 // Entrée sur un interrupteur, un curseur ou une liste ne valide pas.

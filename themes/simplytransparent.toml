@@ -1,0 +1,18 @@
+schema = 1
+
+[meta]
+name = "SimplyTransparent"
+author = "Osprey00"
+source = "https://github.com/ramensoftware/windows-11-taskbar-styling-guide/tree/main/Themes/SimplyTransparent"
+
+[[control_styles]]
+target = "Taskbar.TaskbarFrame > Grid#RootGrid > Taskbar.TaskbarBackground > Grid > Rectangle#BackgroundFill"
+styles = [
+    "Fill=Transparent",
+]
+
+[[control_styles]]
+target = "Rectangle#BackgroundStroke"
+styles = [
+    "Fill=Transparent",
+]
