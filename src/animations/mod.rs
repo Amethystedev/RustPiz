@@ -543,20 +543,6 @@ fn reglages_depuis(config: &Config) -> Reglages {
     }
 }
 
-/// Lit les réglages courants (valeurs par défaut si non initialisé).
-fn lire() -> Reglages {
-    let defaut = Reglages {
-        effet: EffetAnimation::Zoom,
-        ouverture: false,
-        fermeture: false,
-        sans_transition_dwm: true,
-    };
-    ETAT.with(|e| match e.try_borrow() {
-        Ok(g) => g.as_ref().map(|s| s.reglages).unwrap_or(defaut),
-        Err(_) => defaut,
-    })
-}
-
 /// Remplace les réglages (crée l'état si nécessaire, conserve le reste).
 fn ecrire(reglages: Reglages) {
     ETAT.with(|e| match e.try_borrow_mut() {
@@ -583,8 +569,13 @@ pub fn appliquer_config(config: &Config) {
 }
 
 /// Animation d'ouverture activée ?
+///
+/// Si l'état est emprunté (lecture impossible), renvoie vrai (prudent).
 pub fn ouverture_active() -> bool {
-    lire().ouverture
+    ETAT.with(|e| match e.try_borrow() {
+        Ok(g) => g.as_ref().is_some_and(|s| s.reglages.ouverture),
+        Err(_) => true,
+    })
 }
 
 /// Réarmements explicites demandés à la validation de la fenêtre de

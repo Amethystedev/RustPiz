@@ -24,7 +24,8 @@ use windows::Win32::UI::WindowsAndMessaging::{
     GetAncestor, GetClassNameW, GetCursorPos, GetLayeredWindowAttributes, GetWindowLongPtrW, GetWindowRect,
     GetWindowTextW, GetWindowThreadProcessId, IsIconic, IsWindow, IsWindowVisible,
     SetLayeredWindowAttributes, SetWindowLongPtrW, WindowFromPoint, GA_ROOT, GWL_EXSTYLE,
-    LAYERED_WINDOW_ATTRIBUTES_FLAGS, LWA_ALPHA, WS_EX_LAYERED,
+    LAYERED_WINDOW_ATTRIBUTES_FLAGS, LWA_ALPHA, GWL_STYLE, WS_CAPTION, WS_EX_LAYERED,
+    WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_POPUP,
 };
 
 use crate::config::{Config, Raccourcis};
@@ -547,6 +548,8 @@ pub fn appliquer_effet_sous_curseur(effet: EffetDwm) {
 
 /// Applique le premier profil correspondant à une fenêtre pas encore
 /// traitée par le scanner. Retourne vrai si un profil a été appliqué.
+/// La fenêtre est marquée « traitée » qu'une règle s'applique ou non
+/// (sauf si une animation la masque : réessai au prochain scan).
 pub fn appliquer_profil_automatique(hwnd: HWND) -> bool {
     let mut applique = false;
     avec_etat(|etat| {
@@ -555,16 +558,113 @@ pub fn appliquer_profil_automatique(hwnd: HWND) -> bool {
             return;
         }
         // Masquée par une animation : NON marquée « traitée », le scanner
-        // réessaiera au prochain passage (2 s).
+        // réessaiera au prochain passage (500 ms).
         if crate::animations::fenetre_masquee_par_animation(hwnd) {
             return;
         }
         etat.traitees.insert(cle);
-        if !etat.actif {
+        applique = appliquer_profil_interne(etat, hwnd) == IssueProfil::Appliquee;
+    });
+    applique
+}
+
+/// Variante événementielle de [`appliquer_profil_automatique`] (appelée
+/// dès l'affichage d'une fenêtre, voir `reactivite.rs`) : la fenêtre n'est
+/// marquée « traitée » QUE si une règle lui a été appliquée. Sinon (aucun
+/// profil ne correspond, titre pas encore connu, transparence inactive,
+/// fenêtre invisible ou réduite…), elle reste à évaluer par le scan de
+/// secours, dont le comportement est inchangé. Exception : une fenêtre
+/// exclue (classe, processus, plein écran) est marquée comme le ferait le
+/// scan. Retourne vrai si une règle a été appliquée.
+pub fn appliquer_profil_evenementiel(hwnd: HWND) -> bool {
+    let mut applique = false;
+    avec_etat(|etat| {
+        let cle = hwnd.0 as isize;
+        if etat.traitees.contains(&cle) {
             return;
         }
-        if unsafe { est_exclue(hwnd, &etat.config, etat.fenetre_message) } {
+        if crate::animations::fenetre_masquee_par_animation(hwnd) {
             return;
+        }
+        // Invisible ou réduite au moment de l'événement : rien de décidé,
+        // le scan (ou un prochain SHOW) réévaluera.
+        if unsafe { !IsWindowVisible(hwnd).as_bool() || IsIconic(hwnd).as_bool() } {
+            return;
+        }
+        // Fenêtres éphémères (infobulles, menus, popups sans barre de
+        // titre, fenêtres outils / non activables) : non traitées ici, le
+        // scan garde son comportement.
+        if unsafe { est_ephemere(hwnd) } {
+            return;
+        }
+        // Le titre est souvent vide au SHOW : si un profil dépend du titre,
+        // le résultat pourrait changer une fois le titre connu -> on laisse
+        // le scan trancher tant que le titre est vide.
+        if etat
+            .config
+            .profils
+            .iter()
+            .any(|p| !p.titre_contient.is_empty())
+            && unsafe { titre_fenetre(hwnd) }.is_empty()
+        {
+            return;
+        }
+        match appliquer_profil_interne(etat, hwnd) {
+            IssueProfil::Appliquee => {
+                applique = true;
+                etat.traitees.insert(cle);
+            }
+            // Exclusion (classe, processus, plein écran) : décision
+            // définitive, identique à celle du scan ; marquée pour ne pas
+            // réévaluer (ni rejournaliser « Fenêtre ignorée ») à chaque SHOW
+            // d'une fenêtre du shell qui s'affiche et se masque souvent.
+            // Sauf le plein écran seul : état transitoire au SHOW, non
+            // marqué (le scan réévaluera).
+            IssueProfil::Exclue => {
+                let exclusion_definitive = unsafe {
+                    explorer::classe_est_exclue(&nom_classe(hwnd), &etat.config.exclusions_classes)
+                        || nom_processus(hwnd).is_some_and(|p| {
+                            explorer::processus_est_exclu(&p, &etat.config.exclusions_processus)
+                        })
+                        || !est_plein_ecran(hwnd)
+                };
+                if exclusion_definitive {
+                    etat.traitees.insert(cle);
+                }
+            }
+            IssueProfil::Rien => {}
+        }
+    });
+    applique
+}
+
+/// Fenêtre éphémère ou auxiliaire à ne pas traiter par le chemin
+/// événementiel : `WS_EX_TOOLWINDOW`, `WS_EX_NOACTIVATE`, classes de menus
+/// (`#32768`) et d'infobulles (`tooltips_class32`), popups sans `WS_CAPTION`.
+unsafe fn est_ephemere(hwnd: HWND) -> bool {
+    let exstyle = GetWindowLongPtrW(hwnd, GWL_EXSTYLE) as u32;
+    if exstyle & (WS_EX_TOOLWINDOW.0 | WS_EX_NOACTIVATE.0) != 0 {
+        return true;
+    }
+    let classe = nom_classe(hwnd);
+    if classe == "#32768" || classe.eq_ignore_ascii_case("tooltips_class32") {
+        return true;
+    }
+    let style = GetWindowLongPtrW(hwnd, GWL_STYLE) as u32;
+    style & WS_POPUP.0 != 0 && style & WS_CAPTION.0 != WS_CAPTION.0
+}
+
+/// Cœur commun aux deux chemins (scan et événement) : cherche la première
+/// règle (profil utilisateur, puis règle intégrée de l'Explorateur) et
+/// l'applique. Ne touche pas à `traitees`.
+fn appliquer_profil_interne(etat: &mut EtatApp, hwnd: HWND) -> IssueProfil {
+    let mut applique = false;
+    {
+        if !etat.actif {
+            return IssueProfil::Rien;
+        }
+        if unsafe { est_exclue(hwnd, &etat.config, etat.fenetre_message) } {
+            return IssueProfil::Exclue;
         }
         let (processus, classe, titre) = infos_fenetre(hwnd);
         let profil_trouve = etat
@@ -607,8 +707,24 @@ pub fn appliquer_profil_automatique(hwnd: HWND) -> bool {
                 applique = true;
             }
         }
-    });
-    applique
+    }
+    if applique {
+        IssueProfil::Appliquee
+    } else {
+        IssueProfil::Rien
+    }
+}
+
+/// Issue de [`appliquer_profil_interne`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum IssueProfil {
+    /// Un profil ou la règle de l'Explorateur a été appliqué.
+    Appliquee,
+    /// Fenêtre exclue (`est_exclue` : notre fenêtre, invisible/réduite,
+    /// classe ou processus exclu, plein écran).
+    Exclue,
+    /// Transparence inactive, ou aucune règle ne correspond.
+    Rien,
 }
 
 /// Supprime de l'ensemble des fenêtres traitées les HWND détruits,

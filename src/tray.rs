@@ -11,6 +11,7 @@
 //! - les clics sur l'icône du tray (`Shell_NotifyIconW` + message de rappel) ;
 //! - les raccourcis globaux (`WM_HOTKEY`) ;
 //! - les minuteurs (`WM_TIMER` : scan des profils, actions différées) ;
+//! - les fenêtres affichées (`reactivite::WM_FENETRE_AFFICHEE`) ;
 //! - la fermeture de session (`WM_QUERYENDSESSION` / `WM_ENDSESSION`).
 
 use std::cell::{Cell, RefCell};
@@ -42,6 +43,7 @@ use crate::hotkey;
 use crate::logging;
 use crate::parametres;
 use crate::profils;
+use crate::reactivite;
 use crate::window;
 
 /// Message privé envoyé par l'icône du tray à notre fenêtre cachée.
@@ -50,8 +52,26 @@ const RAPPEL_TRAY: u32 = WM_APP + 1;
 const ID_ICONE: u32 = 1;
 
 // Minuteurs.
-/// Minuteur du scan périodique des profils (toutes les 2 secondes).
+/// Minuteur du scan périodique des profils (secours du chemin
+/// événementiel de `reactivite.rs`, toutes les [`PERIODE_SCAN_MS`] ms).
 const IDT_SCAN: usize = 1;
+/// Période du scan de secours des profils (ms). Le scan reste léger :
+/// `EnumWindows` + test d'appartenance à l'ensemble `traitees` ; seules les
+/// fenêtres nouvelles sont examinées, et rien n'est journalisé si aucune
+/// règle n'est appliquée.
+const PERIODE_SCAN_MS: u32 = 500;
+/// Période du scan quand « Animer l'ouverture » est cochée (le chemin
+/// événementiel est alors suspendu : le scan est le seul mécanisme).
+const PERIODE_SCAN_OUVERTURE_MS: u32 = 2000;
+
+/// Période du scan selon l'état de « Animer l'ouverture ».
+fn periode_scan() -> u32 {
+    if animations::ouverture_active() {
+        PERIODE_SCAN_OUVERTURE_MS
+    } else {
+        PERIODE_SCAN_MS
+    }
+}
 /// Minuteur unique des actions différées (3 secondes), le temps de
 /// placer le curseur sur la fenêtre visée après « Valider » (effet DWM).
 const IDT_DIFFERE: usize = 2;
@@ -280,7 +300,7 @@ pub unsafe fn retirer_icone(hwnd: HWND) {
 
 /// Démarre le minuteur du scan périodique des profils.
 pub unsafe fn demarrer_minuteurs(hwnd: HWND) {
-    if SetTimer(Some(hwnd), IDT_SCAN, 2000, None) == 0 {
+    if SetTimer(Some(hwnd), IDT_SCAN, periode_scan(), None) == 0 {
         logging::avertir("SetTimer (scan des profils) a échoué.");
     }
 }
@@ -288,13 +308,20 @@ pub unsafe fn demarrer_minuteurs(hwnd: HWND) {
 /// Recharge la configuration et réenregistre les raccourcis
 /// (utilisé par le menu et par la fenêtre de paramètres).
 pub fn recharger_configuration() {
+    appliquer_configuration(None);
+}
+
+/// Applique `temporaire` (test des paramètres : en mémoire seulement, rien
+/// n'est écrit ni relu depuis le fichier) ou, si `None`, la configuration
+/// lue dans `config.toml`.
+pub fn appliquer_configuration(temporaire: Option<config::Config>) {
     let brut = FENETRE_MSG.with(|c| c.get());
     if brut == 0 {
         return;
     }
     let hwnd = HWND(brut as *mut core::ffi::c_void);
     unsafe {
-        let nouvelle = config::charger();
+        let nouvelle = temporaire.unwrap_or_else(config::charger);
         // Pendant une capture (raccourcis suspendus), on ne réenregistre
         // rien : la reprise (avec la nouvelle configuration) se fera à la
         // fin de la capture.
@@ -307,6 +334,11 @@ pub fn recharger_configuration() {
         // changement, dans son propre fil (jamais bloquant).
         crate::barre::appliquer(&nouvelle);
         window::remplacer_config(nouvelle);
+        // Période du scan adaptée à « Animer l'ouverture » (SetTimer sur un
+        // minuteur existant en remplace la période).
+        if SetTimer(Some(hwnd), IDT_SCAN, periode_scan(), None) == 0 {
+            logging::avertir("SetTimer (scan des profils) a échoué au rechargement.");
+        }
     }
 }
 
@@ -443,6 +475,12 @@ unsafe extern "system" fn procedure_fenetre(
             } else if evenement == WM_LBUTTONDBLCLK {
                 window::basculer_activation();
             }
+            LRESULT(0)
+        }
+        // Fenêtre affichée (crochet de `reactivite.rs`) : règles
+        // automatiques appliquées sans attendre le scan.
+        m if m == reactivite::WM_FENETRE_AFFICHEE => {
+            reactivite::traiter(wparam, lparam);
             LRESULT(0)
         }
         // Raccourci global enregistré avec RegisterHotKey.

@@ -1,7 +1,9 @@
 //! Profils automatiques : application de règles d'opacité et d'effets DWM
 //! selon le processus, la classe de fenêtre et/ou le titre.
 //!
-//! Un minuteur Win32 déclenche `scanner()` toutes les deux secondes :
+//! Les règles sont appliquées dès l'affichage d'une fenêtre par le chemin
+//! événementiel (`reactivite.rs`) ; un minuteur Win32 déclenche en secours
+//! `scanner()` toutes les 500 ms (2 s si « Animer l'ouverture » est cochée ; `tray::periode_scan`) :
 //! on énumère les fenêtres de premier niveau visibles (`EnumWindows`) et,
 //! pour chaque fenêtre pas encore traitée, on cherche le premier profil
 //! correspondant et on l'applique. Une fenêtre n'est traitée qu'une seule
@@ -54,7 +56,8 @@ unsafe extern "system" fn rappel_enum(hwnd: HWND, lparam: LPARAM) -> BOOL {
     true.into() // continuer l'énumération
 }
 
-/// Scan périodique : applique les profils aux nouvelles fenêtres.
+/// Scan périodique de secours : applique les profils aux nouvelles
+/// fenêtres (journalise seulement si une règle a été appliquée).
 pub fn scanner() {
     let mut fenetres: Vec<HWND> = Vec::new();
     unsafe {

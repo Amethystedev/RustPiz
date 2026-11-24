@@ -293,7 +293,7 @@ exclusions_processus = [
 ]
 
 # ==========================================================================
-# Profils automatiques (appliqués aux nouvelles fenêtres, toutes les 2 s).
+# Profils automatiques (appliqués aux nouvelles fenêtres dès leur affichage).
 # Critères (ET logique) : processus, classe, titre_contient.
 # Effets DWM : "aucun", "mica", "micaalt", "acrylique", "verre".
 # Le nom du processus d'une fenêtre est visible dans le Gestionnaire des
@@ -683,6 +683,30 @@ pub struct Parametres {
     /// Taille en % ; bornée à 100-300 à l'écriture.
     pub miniatures_taille: u32,
     pub raccourcis: Raccourcis,
+}
+
+impl Parametres {
+    /// Configuration en mémoire obtenue en appliquant ces paramètres (mêmes
+    /// bornes qu'à l'écriture de `config.toml`) sur `base` : sert au test
+    /// temporaire (« Tester »), sans aucune écriture. Fonction pure.
+    pub fn appliquer_a(&self, mut base: Config) -> Config {
+        base.opacite_defaut = self.opacite_defaut.clamp(10, 100);
+        base.activer_au_demarrage = self.activer_au_demarrage;
+        base.transparence_explorateur = self.transparence_explorateur;
+        base.effet_fenetre = self.effet_fenetre.clone();
+        base.effet_ouverture = self.effet_ouverture;
+        base.effet_fermeture = self.effet_fermeture;
+        base.jelly_actif = self.jelly_actif;
+        base.jelly_puissance = self.jelly_puissance.min(100);
+        base.barre_active = self.barre_active;
+        base.barre_theme = themes_barre::normaliser(&self.barre_theme).to_string();
+        base.miniatures_actives = self.miniatures_actives;
+        base.miniatures_taille = self
+            .miniatures_taille
+            .clamp(MINIATURES_TAILLE_MIN, MINIATURES_TAILLE_MAX);
+        base.raccourcis = self.raccourcis.clone();
+        base
+    }
 }
 
 /// Applique les paramètres au contenu du fichier (fonction pure) : clés

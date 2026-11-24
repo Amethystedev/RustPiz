@@ -23,6 +23,7 @@ mod hotkey;
 mod logging;
 mod parametres;
 mod profils;
+mod reactivite;
 mod themes_barre;
 mod touches;
 mod tray;
@@ -139,10 +140,13 @@ fn main() {
         tray::ajouter_icone(hwnd);
         hotkey::enregistrer(hwnd, &configuration.raccourcis);
         tray::demarrer_minuteurs(hwnd);
+        // Application des règles automatiques dès l'affichage des fenêtres
+        // (crochet hors contexte ; repli sur le scan si impossible).
+        reactivite::installer(hwnd);
 
         // Scan immédiat au démarrage : applique les profils et la
         // transparence automatique de l'Explorateur aux fenêtres déjà
-        // ouvertes (sans attendre le premier minuteur de 2 secondes).
+        // ouvertes (sans attendre le premier passage du minuteur).
         profils::scanner();
 
         // Intégration de la barre des tâches (v0.6.0) : injection dans
@@ -184,6 +188,7 @@ fn main() {
         // avant de quitter, pour ne laisser aucune fenêtre modifiée.
         logging::info("Arrêt demandé, nettoyage...");
         // Ordre : transparence d'abord (immédiat), puis la barre (bornée).
+        reactivite::arreter();
         animations::arreter();
         window::restaurer_toutes();
         barre::arreter(barre::ModeArret::Quitter);

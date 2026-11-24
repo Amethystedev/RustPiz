@@ -54,6 +54,18 @@
 //! (`tray::recharger_configuration`), applique l'interrupteur général et
 //! programme l'effet DWM éventuel. « Fermer », la croix et Echap ferment
 //! sans rien enregistrer.
+//!
+//! « Tester » applique la saisie TEMPORAIREMENT (même validation et mêmes
+//! réarmements que « Valider », configuration en mémoire via
+//! `Parametres::appliquer_a` + `tray::appliquer_configuration`, rien d'écrit,
+//! fenêtre ouverte ; le dernier test prime). Si un test a eu lieu,
+//! « Fermer »/croix/Echap rechargent `config.toml` (+ réarmements) et
+//! rétablissent l'interrupteur général (`annuler_test`). Limite : un effet
+//! DWM programmé par un test sur une fenêtre n'est pas annulé ; barre et
+//! miniatures testées sont réappliquées (injection) puis retirées/rétablies
+//! à la fermeture ; si config.toml est invalide, le test s'appuie sur la
+//! configuration par défaut ; « Recharger la configuration » pendant un test
+//! revient au fichier sans modifier les contrôles.
 
 use std::cell::{Cell, RefCell};
 
@@ -122,6 +134,7 @@ const SS_ENDELLIPSIS: u32 = 0x4000;
 // `IsDialogMessageW` envoie ces commandes pour Entrée et Echap.
 const ID_VALIDER: i32 = 1;
 const ID_FERMER: i32 = 2;
+const ID_TESTER: i32 = 3;
 const ID_ONGLETS: i32 = 3001;
 const ID_MESSAGE: i32 = 3002;
 // Page 1 : transparence.
@@ -273,6 +286,10 @@ thread_local! {
     static CAPTURE: RefCell<Option<(isize, String)>> = const { RefCell::new(None) };
     /// L'utilisateur a choisi un effet dans la liste (CBN_SELCHANGE).
     static EFFET_CHOISI: Cell<bool> = const { Cell::new(false) };
+    /// Un « Tester » a été appliqué sans être enregistré (à annuler à la fermeture).
+    static TEST_FAIT: Cell<bool> = const { Cell::new(false) };
+    /// État de l'interrupteur général avant le 1er test qui l'a modifié.
+    static ACTIF_AVANT_TEST: Cell<Option<bool>> = const { Cell::new(None) };
     /// Contrôle qui avait le focus quand la fenêtre a été désactivée.
     static FOCUS_MEMO: Cell<isize> = const { Cell::new(0) };
 }
@@ -1088,14 +1105,27 @@ unsafe fn construire(hwnd: HWND) {
     let bouton_y = onglet_y + onglet_h + px(14);
     let fermer_x = largeur_client - marge - bouton_l;
     let valider_x = fermer_x - px(10) - bouton_l;
+    let tester_x = valider_x - px(10) - bouton_l;
     texte_multiligne(
         hwnd,
         "",
         marge,
         bouton_y - px(8),
-        valider_x - 2 * marge,
+        tester_x - 2 * marge,
         px(48),
         ID_MESSAGE,
+    );
+    creer(
+        hwnd,
+        w!("BUTTON"),
+        "Tester",
+        BS_PUSHBUTTON as u32 | (WS_TABSTOP | WS_GROUP).0,
+        0,
+        tester_x,
+        bouton_y,
+        bouton_l,
+        bouton_h,
+        ID_TESTER,
     );
     creer(
         hwnd,
@@ -1207,9 +1237,22 @@ unsafe fn afficher_page(hwnd: HWND, index: usize) {
 // Validation
 // ---------------------------------------------------------------------------
 
-/// Lit tous les contrôles, enregistre `config.toml`, applique à chaud puis
-/// ferme la fenêtre. Erreur : message dans la fenêtre, qui reste ouverte.
-unsafe fn valider(hwnd: HWND) {
+/// Saisie validée de la fenêtre (commune à « Valider » et « Tester »).
+struct Saisie {
+    parametres: Parametres,
+    /// État voulu de l'interrupteur général.
+    actif_voulu: bool,
+    /// Interrupteur général touché pendant cette ouverture.
+    actif_touche: bool,
+    effet_dwm: Option<EffetDwm>,
+    effet_choisi: bool,
+    rearmer_ouverture: bool,
+    rearmer_jelly: bool,
+}
+
+/// Lit et valide tous les contrôles. Erreur (raccourci invalide ou en
+/// doublon) : message dans la fenêtre et `None`.
+unsafe fn lire_saisie(hwnd: HWND) -> Option<Saisie> {
     let [bascule, diminuer, augmenter] = RACCOURCIS.with(|r| match r.try_borrow() {
         Ok(r) => r.clone(),
         Err(_) => [String::new(), String::new(), String::new()],
@@ -1229,7 +1272,7 @@ unsafe fn valider(hwnd: HWND) {
                     "Raccourci « {nom} » invalide (« {texte} ») : enregistrement annulé."
                 ));
                 message(hwnd, &format!("Raccourci « {nom} » invalide : saisissez-le de nouveau."));
-                return;
+                return None;
             }
         }
     }
@@ -1243,7 +1286,7 @@ unsafe fn valider(hwnd: HWND) {
                         analyses[i].0, analyses[j].0
                     ),
                 );
-                return;
+                return None;
             }
         }
     }
@@ -1297,27 +1340,52 @@ unsafe fn valider(hwnd: HWND) {
     let rearmer_jelly = parametres.jelly_actif
         && (!animations::jelly_actif() || interrupteur_touche(hwnd, ID_SW_JELLY));
     let effet_choisi = EFFET_CHOISI.with(|c| c.get());
+    Some(Saisie {
+        parametres,
+        actif_voulu,
+        actif_touche: interrupteur_touche(hwnd, ID_SW_ACTIF),
+        effet_dwm,
+        effet_choisi,
+        rearmer_ouverture,
+        rearmer_jelly,
+    })
+}
 
-    match config::enregistrer_parametres(&parametres) {
+/// Applique à chaud une saisie (réarmements, rechargement, interrupteur
+/// général, effet DWM différé). `temporaire` : configuration en mémoire
+/// (test) ; `None` : relecture du fichier qui vient d'être écrit.
+unsafe fn appliquer_saisie(saisie: &Saisie, temporaire: Option<config::Config>) {
+    let p = &saisie.parametres;
+    logging::info(&format!(
+        "Barre des tâches : {} (thème « {} ») ; miniatures : {} ({} %) — \
+         application déléguée au fil d'intégration de la barre (v0.6.0).",
+        if p.barre_active { "activée" } else { "désactivée" },
+        themes_barre::nom(&p.barre_theme),
+        if p.miniatures_actives { "activées" } else { "désactivées" },
+        p.miniatures_taille
+    ));
+    animations::rearmer(saisie.effet_choisi, saisie.rearmer_ouverture, saisie.rearmer_jelly);
+    // Applique tout à chaud (animations, Jelly, opacité, profils,
+    // raccourcis réenregistrés).
+    tray::appliquer_configuration(temporaire);
+    if saisie.actif_touche && saisie.actif_voulu != window::est_actif() {
+        window::basculer_activation();
+    }
+    if let Some(e) = saisie.effet_dwm {
+        tray::programmer_effet_dwm(e);
+    }
+}
+
+/// Lit tous les contrôles, enregistre `config.toml`, applique à chaud puis
+/// ferme la fenêtre. Erreur : message dans la fenêtre, qui reste ouverte.
+unsafe fn valider(hwnd: HWND) {
+    let Some(saisie) = lire_saisie(hwnd) else { return };
+    match config::enregistrer_parametres(&saisie.parametres) {
         Ok(()) => {
-            logging::info(&format!(
-                "Barre des tâches : {} (thème « {} ») ; miniatures : {} ({} %) — \
-                 application déléguée au fil d'intégration de la barre (v0.6.0).",
-                if parametres.barre_active { "activée" } else { "désactivée" },
-                themes_barre::nom(&parametres.barre_theme),
-                if parametres.miniatures_actives { "activées" } else { "désactivées" },
-                parametres.miniatures_taille
-            ));
-            animations::rearmer(effet_choisi, rearmer_ouverture, rearmer_jelly);
-            // Applique tout à chaud (animations, Jelly, opacité, profils,
-            // raccourcis réenregistrés).
-            tray::recharger_configuration();
-            if interrupteur_touche(hwnd, ID_SW_ACTIF) && actif_voulu != window::est_actif() {
-                window::basculer_activation();
-            }
-            if let Some(e) = effet_dwm {
-                tray::programmer_effet_dwm(e);
-            }
+            // Enregistré : plus rien à annuler à la fermeture.
+            TEST_FAIT.with(|c| c.set(false));
+            ACTIF_AVANT_TEST.with(|c| c.set(None));
+            appliquer_saisie(&saisie, None);
             let _ = DestroyWindow(hwnd);
         }
         Err(e) => {
@@ -1325,6 +1393,46 @@ unsafe fn valider(hwnd: HWND) {
             message(hwnd, "Erreur d'enregistrement de config.toml (détails dans journal.log).");
         }
     }
+}
+
+/// « Tester » : applique TEMPORAIREMENT la saisie (configuration en mémoire,
+/// config.toml intact), la fenêtre reste ouverte. Le dernier test prime.
+unsafe fn tester(hwnd: HWND) {
+    let Some(saisie) = lire_saisie(hwnd) else { return };
+    // Base = fichier (profils, exclusions) ; seuls les champs de la fenêtre
+    // sont remplacés.
+    let temporaire = saisie.parametres.appliquer_a(config::charger());
+    // État de l'interrupteur général avant le 1er test qui le modifie, pour
+    // le rétablir à la fermeture.
+    if saisie.actif_touche && ACTIF_AVANT_TEST.with(|c| c.get()).is_none() {
+        ACTIF_AVANT_TEST.with(|c| c.set(Some(window::est_actif())));
+    }
+    TEST_FAIT.with(|c| c.set(true));
+    logging::info("Paramètres : test temporaire appliqué (config.toml inchangé).");
+    appliquer_saisie(&saisie, Some(temporaire));
+    message(hwnd, "");
+}
+
+/// Fermeture sans enregistrer après un test : retour aux réglages du fichier
+/// (rechargement + réarmements) et à l'état de l'interrupteur général.
+unsafe fn annuler_test() {
+    if !TEST_FAIT.with(|c| c.replace(false)) {
+        return;
+    }
+    let fichier = config::charger();
+    let rearmer_ouverture = fichier.effet_ouverture && !animations::ouverture_active();
+    let rearmer_jelly = fichier.jelly_actif && !animations::jelly_actif();
+    animations::rearmer(false, rearmer_ouverture, rearmer_jelly);
+    // Les fenêtres déjà rendues transparentes par le test sont remises à
+    // l'état d'origine ; le scan réapplique ensuite les règles du fichier.
+    window::restaurer_toutes();
+    tray::appliquer_configuration(Some(fichier));
+    if let Some(avant) = ACTIF_AVANT_TEST.with(|c| c.take()) {
+        if avant != window::est_actif() {
+            window::basculer_activation();
+        }
+    }
+    logging::info("Paramètres fermés sans enregistrer : retour aux réglages de config.toml.");
 }
 
 // ---------------------------------------------------------------------------
@@ -1623,6 +1731,12 @@ unsafe extern "system" fn procedure_parametres(
                         tray::reprendre_raccourcis();
                     }
                 }
+                ID_TESTER if code == BN_CLICKED => {
+                    tester(hwnd);
+                    if !capture_active() {
+                        tray::reprendre_raccourcis();
+                    }
+                }
                 ID_FERMER if code == BN_CLICKED => {
                     let _ = DestroyWindow(hwnd);
                 }
@@ -1671,6 +1785,7 @@ unsafe extern "system" fn procedure_parametres(
             // Bouton par défaut pour Entrée (IsDialogMessageW) : Fermer s'il
             // a le focus, Valider sinon.
             let fermer = GetDlgItem(Some(hwnd), ID_FERMER).unwrap_or_default();
+            let tester = GetDlgItem(Some(hwnd), ID_TESTER).unwrap_or_default();
             let focus = GetFocus();
             let id_focus = if focus.0.is_null() { 0 } else { GetDlgCtrlID(focus) };
             let id_parent_focus = match GetParent(focus) {
@@ -1693,8 +1808,10 @@ unsafe extern "system" fn procedure_parametres(
                 // Entrée sur un interrupteur, un curseur ou une liste ne valide pas.
                 return LRESULT(0);
             }
-            let defaut = if !fermer.0.is_null() && GetFocus() == fermer {
+            let defaut = if !fermer.0.is_null() && focus == fermer {
                 ID_FERMER
+            } else if !tester.0.is_null() && focus == tester {
+                ID_TESTER
             } else {
                 ID_VALIDER
             };
@@ -1731,6 +1848,9 @@ unsafe extern "system" fn procedure_parametres(
         }
         WM_DESTROY => {
             FENETRE.with(|c| c.set(0));
+            // Test non enregistré : retour aux réglages du fichier (avant la
+            // reprise des raccourcis, qui utilise la configuration en mémoire).
+            annuler_test();
             // Fermeture sans enregistrer (ou après une capture abandonnée) :
             // les raccourcis globaux suspendus sont rétablis. Sans effet
             // après « Valider » (déjà réenregistrés par le rechargement).
@@ -1754,6 +1874,8 @@ unsafe extern "system" fn procedure_parametres(
                 }
             });
             EFFET_CHOISI.with(|c| c.set(false));
+            TEST_FAIT.with(|c| c.set(false));
+            ACTIF_AVANT_TEST.with(|c| c.set(None));
             FOCUS_MEMO.with(|c| c.set(0));
             DefWindowProcW(hwnd, message_win, wparam, lparam)
         }
