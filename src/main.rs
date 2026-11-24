@@ -21,6 +21,7 @@ mod dwm;
 mod explorer;
 mod hotkey;
 mod logging;
+mod logging_dates;
 mod parametres;
 mod profils;
 mod reactivite;
@@ -119,6 +120,8 @@ fn main() {
         if !instance_unique() {
             return;
         }
+        // Instance unique confirmée : rotation/purge du journal de démarrage.
+        logging::rotation_demarrage();
 
         // Vérification de compatibilité (Windows 11 = build ≥ 22000).
         compat::verifier();

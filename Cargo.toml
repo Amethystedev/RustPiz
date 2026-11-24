@@ -1,6 +1,6 @@
 [package]
 name = "rustpiz"
-version = "0.6.1"
+version = "0.6.2"
 edition = "2021"
 description = "RustPiz — effets de fenêtres pour Windows 11 : transparence, effets DWM, animations et Jelly (Win32 natif)"
 license = "GPL-3.0-only"
