@@ -247,7 +247,7 @@ concernée pourrait rester masquée : la fermer puis la rouvrir ;
 
 ## Barre des tâches et miniatures
 
-Ces deux fonctions, héritées du projet RustHawk, sont **désactivées par défaut**
+Ces deux fonctions sont **désactivées par défaut**
 et se règlent dans les onglets *Param Barre des Taches* et *Param miniatures*.
 
 |Réglage|Action|
@@ -268,7 +268,7 @@ fermeture de RustPiz ou de la session retirent thèmes et correctifs ; la DLL
 reste chargée mais inerte dans `explorer.exe` jusqu'à son redémarrage.
 
 Limites : un seul outil à la fois peut modifier l'interface de la barre (quittez
-Windhawk, TranslucentTB, ExplorerBlurMica et RustHawk) ; Smart App Control ou
+Windhawk, TranslucentTB, ExplorerBlurMica…) ; Smart App Control ou
 WDAC peuvent bloquer la DLL non signée ; certains thèmes « verre » sont des
 approximations et six familles chargent des images depuis Internet.
 
@@ -351,7 +351,7 @@ L'exécutable est généré dans
 ## Licence
 
 **GPL-3.0-only** depuis la v0.6.0 (les versions précédentes restent sous MIT).
-Les fonctions Barre des tâches et Miniatures et les thèmes dérivent de RustHawk
-et du Windhawk Styler, publiés sous GPL-3.0 : voir `LICENSE` et
+Les fonctions Barre des tâches et Miniatures et les thèmes dérivent du
+Windhawk Styler, publié sous GPL-3.0 : voir `LICENSE` et
 `crates/LICENSE-GPL3-NOTICE.md`.
 
